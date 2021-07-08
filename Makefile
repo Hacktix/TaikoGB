@@ -18,6 +18,8 @@ IMAGES = $(shell find . -name "*.png")
 SONGS = $(shell find ./music -name "*.asm")
 
 all: $(addsuffix .2bpp, $(basename $(IMAGES))) $(addsuffix .o, $(basename $(SONGS))) taiko.gb
+nogfx: $(addsuffix .o, $(basename $(SONGS))) taiko.gb
+gfx: $(addsuffix .2bpp, $(basename $(IMAGES)))
 
 %.2bpp: %.png
 	$(info # Generating GFX - $@)
