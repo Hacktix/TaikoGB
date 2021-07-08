@@ -22,10 +22,15 @@ all: $(addsuffix .2bpp, $(basename $(IMAGES))) taiko.gb
 	$(info # Generating GFX - $@)
 	@$(RGBGFX) $(GFXFLAGS) -o $@ $<
 
-taiko.gb: taiko.o
+taiko.gb: hUGEDriver.o taiko.o
 	$(info # Linking & Fixing ROM Header...)
+	$(info Linking: $^)
 	@$(RGBLINK) $(LDFLAGS) -o $@ $^
 	@$(RGBFIX) $(FIXFLAGS) $@
+
+hUGEDriver.o: hUGEDriver.asm
+	$(info # Assembling hUGEDriver...)
+	@$(RGBASM) $(ASFLAGS) -i $(INCPATH) -o $@ $<
 
 taiko.o: main.asm
 	$(info # Assembling Main Game Code...)
@@ -34,7 +39,9 @@ taiko.o: main.asm
 .PHONY: clean
 clean:
 	$(info # Cleaning build files...)
-	@$(RM_F) taiko.o taiko.gb taiko.sym
+	@$(RM_F) $(shell find . -name "*.sym")
+	@$(RM_F) $(shell find . -name "*.o")
+	@$(RM_F) $(shell find . -name "*.gb")
 	$(info # Cleaning GFX...)
 	@$(RM_F) $(shell find . -name "*.2bpp")
 	@$(RM_F) $(shell find . -name "*.tilemap")
