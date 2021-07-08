@@ -1,0 +1,8 @@
+# dont ask
+desktop.ini
+
+# build files
+*.o
+*.gb
+*.sym
+*.2bpp
