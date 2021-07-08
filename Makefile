@@ -15,18 +15,23 @@ GFXFLAGS = -T -u -v -f
 
 INCPATH = include
 IMAGES = $(shell find . -name "*.png")
+SONGS = $(shell find ./music -name "*.asm")
 
-all: $(addsuffix .2bpp, $(basename $(IMAGES))) taiko.gb
+all: $(addsuffix .2bpp, $(basename $(IMAGES))) $(addsuffix .o, $(basename $(SONGS))) taiko.gb
 
 %.2bpp: %.png
 	$(info # Generating GFX - $@)
 	@$(RGBGFX) $(GFXFLAGS) -o $@ $<
 
-taiko.gb: hUGEDriver.o taiko.o
+taiko.gb: hUGEDriver.o taiko.o $(addsuffix .o, $(basename $(SONGS)))
 	$(info # Linking & Fixing ROM Header...)
 	$(info Linking: $^)
 	@$(RGBLINK) $(LDFLAGS) -o $@ $^
 	@$(RGBFIX) $(FIXFLAGS) $@
+
+music/%.o: music/%.asm
+	$(info Assembling Song File: $^)
+	@$(RGBASM) $(ASFLAGS) -i $(INCPATH) -o $@ $<
 
 hUGEDriver.o: hUGEDriver.asm
 	$(info # Assembling hUGEDriver...)

@@ -31,4 +31,14 @@ SECTION "Main", ROM0[$100]
     ds $150 - @
 
 Main::
-    jr @
+    ld hl, totaka
+    call hUGE_init
+
+    ; TODO: Replace this with actual game code, just used to test hUGEDriver for now
+.musicLoop
+    call _hUGE_dosound
+.idleLoop
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr nz, .idleLoop
+    jr .musicLoop
