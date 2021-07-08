@@ -9,8 +9,8 @@ RGBGFX = rgbgfx
 RM_F = rm -f
 
 ASFLAGS = -h
-LDFLAGS = -t -w -n taiko.sym
-FIXFLAGS = -v -p $(PADVAL) -t $(NAME) -C
+LDFLAGS = -w -n taiko.sym
+FIXFLAGS = -v -p $(PADVAL) -t $(NAME) -m 0x1b -r 0x02
 GFXFLAGS = -T -u -v -f
 
 INCPATH = include
