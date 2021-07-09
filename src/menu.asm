@@ -58,6 +58,23 @@ InitMenu:
     call Memcpy
 
     ;----------------------------------------------------------------------------
+    ; Initialize Registers & Variables
+    ld a, MENU_SCX
+    ldh [rSCX], a
+    ld a, 7
+    ldh [rWX], a
+    xor a
+    ldh [rSCY], a
+    ldh [hChangeSCY], a
+    ldh [hSelectedSong], a
+    inc a
+    ldh [hIndexSTAT], a           ; Set STAT Handler to $01 (= ToggleWindow_STAT)
+    ld a, STATF_LYC
+    ldh [rSTAT], a
+    ld a, 15
+    ldh [rLYC], a
+
+    ;----------------------------------------------------------------------------
     ; Load tilemap data into VRAM
 
     ; Render Window
@@ -68,6 +85,20 @@ InitMenu:
     ld bc, 64
     ld d, $02
     call Memset
+
+    ; Render Initial Song List
+    xor a
+    ld b, 7
+    ld hl, $9BC0
+.initSongList
+    push af
+    push bc
+    call RenderSongLabel
+    pop bc
+    pop af
+    inc a
+    dec b
+    jr nz, .initSongList
 
     ;----------------------------------------------------------------------------
     ; Initialize OAM
@@ -83,36 +114,6 @@ InitMenu:
     ld de, SongMenuOAM
     ld c, EndSongMenuOAM - SongMenuOAM
     rst MemcpySmall
-
-    ;----------------------------------------------------------------------------
-    ; Initialize Registers & Variables
-    ld a, MENU_SCX
-    ldh [rSCX], a
-    ld a, 7
-    ldh [rWX], a
-    xor a
-    ldh [rSCY], a
-    ldh [hChangeSCY], a
-    inc a
-    ldh [hIndexSTAT], a           ; Set STAT Handler to $01 (= ToggleWindow_STAT)
-    ld a, STATF_LYC
-    ldh [rSTAT], a
-    ld a, 15
-    ldh [rLYC], a
-
-    ; TODO: Remove Debug Data
-    ld hl, $98E0
-    ld de, str1
-    call Strcpy
-    ld hl, $9900
-    ld de, str2
-    call Strcpy
-    ld hl, $9940
-    ld de, str3
-    call Strcpy
-    ld hl, $9960
-    ld de, str4
-    call Strcpy
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
@@ -188,8 +189,83 @@ SongMenuLoop:
 .noUpDown
 
 .skipInputCheck
-
     jr SongMenuLoop
+    
+
+
+;----------------------------------------------------------------------------
+; Song Selection Menu Subroutines
+;----------------------------------------------------------------------------
+
+;----------------------------------------------------------------------------
+; Input:
+;  * A  - Song Index
+;  * HL - VRAM Pointer
+RenderSongLabel:
+    ; Check if index is out of range
+    cp SongEntryCounter
+    jr c, .inRange
+    and SongEntryCounter-1
+.inRange
+
+    ; Preserve VRAM Pointer
+    push af
+    ld a, h
+    and $9B
+    ld h, a
+    ld a, l
+    and $E0
+    ld l, a
+    pop af
+    push hl
+
+    ; Fetch Pointer to Song header and offset by $0F (Start of Song Title)
+    ld l, a
+    xor a
+    ld h, a
+    add hl, hl
+    ld de, MapsetTable
+    add hl, de
+    ld a, [hli]
+    ld d, a
+    ld h, [hl]
+    ld l, d
+    ld de, $000F
+    add hl, de
+
+    ; Load String pointer into DE and VRAM pointer into HL and print
+    ld d, h
+    ld e, l
+    pop hl
+    call Strcpy
+
+    ; Go to new line in VRAM & Print Artist String
+    ld a, $20
+    add l
+    ld l, a
+    adc h
+    sub l
+    ld h, a
+    ld a, l
+    and $E0
+    inc a
+    ld l, a
+    call Strcpy
+
+    ; Go to new line in VRAM & clear
+    ld de, $0020
+    add hl, de
+    ld a, h
+    and $9B
+    ld h, a
+    ld a, l
+    and $E0
+    ld l, a
+    ld bc, 32
+    call Memset
+
+    ; Return from Subroutine
+    ret
 
 
 ;----------------------------------------------------------------------------
@@ -283,3 +359,4 @@ str4: db "Another Artist", 0
 
 SECTION "Song Selection HRAM", HRAM
 hChangeSCY: db
+hSelectedSong: db

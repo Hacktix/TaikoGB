@@ -1,5 +1,6 @@
 INCLUDE "hardware.inc"
 INCLUDE "src/strings.asm"
+INCLUDE "src/songs.asm"
 INCLUDE "src/common.asm"
 INCLUDE "src/menu.asm"
 
@@ -11,6 +12,7 @@ SECTION "Vectors", ROM0[0]
 ;  DE - Pointer to Source
 ;  HL - Pointer to Destination
 ;----------------------------------------------------------------------------
+NULL:
 MemcpySmall:
     ld a, [de]
 	ld [hli], a
