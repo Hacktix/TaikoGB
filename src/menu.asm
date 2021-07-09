@@ -96,7 +96,15 @@ InitMenu:
 ; Main Loop for the Song Selection Menu Game State
 ;----------------------------------------------------------------------------
 SongMenuLoop:
+    ; Wait for VBlank
     halt
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr c, SongMenuLoop
+
+    ; Fetch Input State
+    call FetchInput
+
     jr SongMenuLoop
 
 ;----------------------------------------------------------------------------

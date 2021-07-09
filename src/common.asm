@@ -43,6 +43,41 @@ Strcpy::
     ret z
     jr Strcpy
 
+;----------------------------------------------------------------------------
+; Fetches the input state to the two corresponding HRAM addresses
+;----------------------------------------------------------------------------
+FetchInput:
+    ; Fetch D-Pad State
+    ld c, LOW(rP1)
+	ld a, $20
+	ldh [c], a
+	ldh a, [c]
+	or $F0
+	ld b, a
+	swap b
+
+    ; Fetch Button State
+	ld a, $10
+	ldh [c], a
+	ldh a, [c]
+	and $0F
+	or $F0
+	xor b
+	ld b, a
+
+	; Release joypad
+	ld a, $30
+	ldh [c], a
+
+    ; Update HRAM Variables & return
+	ldh a, [hHeldKeys]
+	cpl
+	and b
+	ldh [hPressedKeys], a
+	ld a, b
+	ldh [hHeldKeys], a
+    ret
+
 
 
 SECTION "STAT Handler", ROM0
@@ -79,6 +114,8 @@ DEF STATR_FLIP_BGP_MENU EQU $00
 
 
 SECTION "Common HRAM", HRAM
+hHeldKeys: db
+hPressedKeys: db
 hIndexSTAT: db
 
 

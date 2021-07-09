@@ -77,5 +77,9 @@ Main::
     xor a
     ldh [rLCDC], a
 
+    ; Initialize Variables
+    ldh [hPressedKeys], a
+    ldh [hHeldKeys], a
+
     ; Jump to initialization of next game state
     jp InitMenu
