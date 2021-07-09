@@ -1,4 +1,5 @@
 INCLUDE "hardware.inc"
+INCLUDE "src/strings.asm"
 INCLUDE "src/common.asm"
 INCLUDE "src/menu.asm"
 

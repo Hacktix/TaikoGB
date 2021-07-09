@@ -44,6 +44,21 @@ InitMenu:
     ld c, EndTaikoCursor - TaikoCursor
     rst MemcpySmall
 
+    ; Load Common Tiles into VRAM
+    ld hl, $8020
+    ld de, CommonTiles
+    ld bc, EndCommonTiles - CommonTiles
+    call Memcpy
+
+    ; Render Window
+    ld hl, $9C03
+    ld de, strSongMenuTitle
+    call Strcpy
+    ld hl, $9C20
+    ld bc, 64
+    ld d, $02
+    call Memset
+
     ; Clear OAM
     ld hl, _OAMRAM
     ld bc, OAM_COUNT*4
@@ -59,11 +74,15 @@ InitMenu:
     ; Initialize PPU Registers
     ld a, MENU_SCX
     ldh [rSCX], a
+    ld a, 7
+    ldh [rWX], a
     xor a
     ldh [rSCY], a
+    inc a
+    ldh [hIndexSTAT], a           ; Set STAT Handler to $01 (= ToggleWindow_STAT)
     ld a, STATF_LYC
     ldh [rSTAT], a
-    ld a, LY_SELECT - 1
+    ld a, 15
     ldh [rLYC], a
 
     ; TODO: Remove Debug Data
@@ -83,15 +102,15 @@ InitMenu:
     ; Initialize Interrupts & LYC
     xor a
     ldh [rIF], a
-    ldh [hIndexSTAT], a           ; Set STAT Handler to $00 (= FlipBGP_STAT)
     ld a, IEF_STAT | IEF_VBLANK
     ldh [rIE], a
     ei
 
     ; Initialize LCD and Loop
-    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_BG8000 | LCDCF_OBJON
+    ld a, LCDCF_ON | LCDCF_BGON | LCDCF_BG8000 | LCDCF_OBJON | LCDCF_WINON | LCDCF_WIN9C00
     ldh [rLCDC], a
 
+    
 ;----------------------------------------------------------------------------
 ; Main Loop for the Song Selection Menu Game State
 ;----------------------------------------------------------------------------
@@ -107,9 +126,13 @@ SongMenuLoop:
 
     jr SongMenuLoop
 
+
 ;----------------------------------------------------------------------------
 ; Song Selection Menu STAT Handlers
 ;----------------------------------------------------------------------------
+
+;----------------------------------------------------------------------------
+; Flips BGP for the selection bar section of the screen
 SongMenu_FlipBGP_STAT:
     ; Wait for HBlank
     ld a, [rSTAT]
@@ -121,14 +144,51 @@ SongMenu_FlipBGP_STAT:
     cpl 
     ldh [rBGP], a
 
-    ; Update LYC
+    ; Update LYC & STAT Handle Index
     ldh a, [rLYC]
-    add SEL_HEIGHT
-    cp LY_SELECT + 2*SEL_HEIGHT - 1
-    jr nz, .noSkipOverflow
-    sub 2*SEL_HEIGHT
-.noSkipOverflow
+    cp LY_SELECT - 1
+    ld b, STATR_FLIP_BGP_MENU        ; If is start of select bar, keep STAT routine at BGP flip
+    ld a, LY_SELECT + SEL_HEIGHT - 1 ; and set LYC to end of select bar
+    jr z, .isSelectStart
+    ld b, STATR_FLIP_WIN_EN_MENU     ; Otherwise set routine to Window Toggle
+    ld a, SCRN_Y - 17                ; and set LYC to end of frame
+.isSelectStart
     ldh [rLYC], a
+    ld a, b
+    ldh [hIndexSTAT], a
+
+    ; Restore Registers & Return
+    pop hl
+    pop de
+    pop bc
+    pop af
+    reti
+
+;----------------------------------------------------------------------------
+; Toggles the window enable bit for screen borders
+SongMenu_ToggleWindow_STAT:
+    ; Wait for HBlank
+    ld a, [rSTAT]
+    and STATF_BUSY
+    jr nz, SongMenu_ToggleWindow_STAT
+
+    ; Flip Window Enable Bit
+    ldh a, [rLCDC]
+    xor LCDCF_WINON
+    ldh [rLCDC], a
+
+    ; Update LYC & STAT Handle Index
+    ldh a, [rLYC]
+    cp SCRN_Y - 17
+    ld b, STATR_FLIP_WIN_EN_MENU     ; If is end of frame window enable, keep routine at window toggle
+    ld a, 15                         ; and set LYC to 15
+    jr z, .isEndOfFrame
+    ld b, STATR_FLIP_BGP_MENU        ; Otherwise set routine to BGP flip
+    ld a, LY_SELECT - 1              ; and set LYC to start of select bar
+.isEndOfFrame
+    ldh [rLYC], a
+    ld a, b
+    ldh [hIndexSTAT], a
 
     ; Restore Registers & Return
     pop hl

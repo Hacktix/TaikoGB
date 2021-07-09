@@ -107,9 +107,11 @@ HandleSTAT:
 
 STATHandleTable:
     dw SongMenu_FlipBGP_STAT
+    dw SongMenu_ToggleWindow_STAT
 
 ; Table Index EQUs
-DEF STATR_FLIP_BGP_MENU EQU $00
+DEF STATR_FLIP_BGP_MENU    EQU $00
+DEF STATR_FLIP_WIN_EN_MENU EQU $01
 
 
 
@@ -129,3 +131,7 @@ EndFontUppercase:
 FontLowercase:
 INCBIN "gfx/alphabet_low.2bpp"
 EndFontLowercase:
+
+CommonTiles:
+INCBIN "gfx/separator.2bpp"
+EndCommonTiles:
