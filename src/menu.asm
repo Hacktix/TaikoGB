@@ -1,15 +1,19 @@
 ;----------------------------------------------------------------------------
 ; Constant Definitions
 ;----------------------------------------------------------------------------
-DEF LY_SELECT   EQU $34
-DEF SEL_HEIGHT  EQU 24
-DEF MENU_SCX    EQU -14
+DEF LY_SELECT        EQU $34
+DEF SEL_HEIGHT       EQU 24
+DEF MENU_SCX         EQU -14
+DEF SEL_SCROLL_SPEED EQU 3
 
 SECTION "Song Menu", ROM0
 ;----------------------------------------------------------------------------
 ; Initialization Routine for the Song Selection Menu
 ;----------------------------------------------------------------------------
 InitMenu:
+    ;----------------------------------------------------------------------------
+    ; Basic Initialization
+
     ; Initialize Palettes
     ld a, %11100100
     ldh [rBGP], a
@@ -27,6 +31,9 @@ InitMenu:
     ld [rROMB1], a
     inc a
     ld [rROMB0], a
+
+    ;----------------------------------------------------------------------------
+    ; Load Tile Data into VRAM
 
     ; Load Font into VRAM
     ld hl, $8410
@@ -50,6 +57,9 @@ InitMenu:
     ld bc, EndCommonTiles - CommonTiles
     call Memcpy
 
+    ;----------------------------------------------------------------------------
+    ; Load tilemap data into VRAM
+
     ; Render Window
     ld hl, $9C03
     ld de, strSongMenuTitle
@@ -58,6 +68,9 @@ InitMenu:
     ld bc, 64
     ld d, $02
     call Memset
+
+    ;----------------------------------------------------------------------------
+    ; Initialize OAM
 
     ; Clear OAM
     ld hl, _OAMRAM
@@ -71,7 +84,8 @@ InitMenu:
     ld c, EndSongMenuOAM - SongMenuOAM
     rst MemcpySmall
 
-    ; Initialize PPU Registers
+    ;----------------------------------------------------------------------------
+    ; Initialize Registers & Variables
     ld a, MENU_SCX
     ldh [rSCX], a
     ld a, 7
@@ -100,6 +114,9 @@ InitMenu:
     ld de, str4
     call Strcpy
 
+    ;----------------------------------------------------------------------------
+    ; Initialize Interrupts & Fall through to main loop
+
     ; Initialize Interrupts & LYC
     xor a
     ldh [rIF], a
@@ -116,11 +133,15 @@ InitMenu:
 ; Main Loop for the Song Selection Menu Game State
 ;----------------------------------------------------------------------------
 SongMenuLoop:
+    ;----------------------------------------------------------------------------
     ; Wait for VBlank
     halt
     ldh a, [rLY]
     cp SCRN_Y
     jr c, SongMenuLoop
+
+    ;----------------------------------------------------------------------------
+    ; Song Selection Scrolling
 
     ; Check if scrolling should be done
     ldh a, [hChangeSCY]
@@ -130,20 +151,23 @@ SongMenuLoop:
     ; Check whether to increment or decrement & update SCY
     bit 7, a
     jr z, .scrollInc
-    inc a
+    add SEL_SCROLL_SPEED
     ldh [hChangeSCY], a
     ldh a, [rSCY]
-    dec a
+    sub SEL_SCROLL_SPEED
     jr .endScroll
 .scrollInc
-    dec a
+    sub SEL_SCROLL_SPEED
     ldh [hChangeSCY], a
     ldh a, [rSCY]
-    inc a
+    add SEL_SCROLL_SPEED
 .endScroll
     ldh [rSCY], a
     jr .skipInputCheck
 .noScrollingNeeded
+
+    ;----------------------------------------------------------------------------
+    ; Input Handler
 
     ; Fetch Input State & Check for Up/Down Inputs
     call FetchInput
