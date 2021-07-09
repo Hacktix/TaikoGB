@@ -74,6 +74,17 @@ InitMenu:
     ld a, 15
     ldh [rLYC], a
 
+    ; VAddr & Index Variables
+    ld a, $60
+    ld [wSelectionVAddrTop], a
+    ld [wSelectionVAddrBottom], a
+    ld a, $9B
+    ld [wSelectionVAddrTop+1], a
+    ld a, $9A
+    ld [wSelectionVAddrBottom+1], a
+    ld a, SongEntryCounter - 4
+    ld [wSelectionIndexTop], a
+
     ;----------------------------------------------------------------------------
     ; Load tilemap data into VRAM
 
@@ -97,6 +108,7 @@ InitMenu:
     inc a
     dec b
     jr nz, .initSongList
+    ld [wSelectionIndexBottom], a
 
     ;----------------------------------------------------------------------------
     ; Initialize OAM
@@ -162,7 +174,7 @@ SongMenuLoop:
     add SEL_SCROLL_SPEED
 .endScroll
     ldh [rSCY], a
-    jr .skipInputCheck
+    jp .skipInputCheck
 .noScrollingNeeded
 
     ;----------------------------------------------------------------------------
@@ -172,22 +184,102 @@ SongMenuLoop:
     call FetchInput
     ldh a, [hHeldKeys]
     and BTN_DPAD_D | BTN_DPAD_U
-    jr z, .noUpDown
+    jp z, .noUpDown
 
-    ; Set new hChangeSCY depending on input
-    and BTN_DPAD_D
-    ld a, SEL_HEIGHT
-    jr nz, .pressedUp
-    ld a, -SEL_HEIGHT
-.pressedUp
-    ld b, a
+    ; Jump depending on whether UP or DOWN were pressed
+    and BTN_DPAD_U
+    jr z, .pressedDown
+
+    ; # Up Press Handler
+    ; Update hChangeSCY
+    ld b, -SEL_HEIGHT
     ldh a, [hChangeSCY]
     add b
     ldh [hChangeSCY], a
+
+    ; Pre-render top song label
+    ld a, [wSelectionVAddrTop]
+    ld l, a
+    ld a, [wSelectionVAddrTop+1]
+    ld h, a
+    ld a, [wSelectionIndexTop]
+    call RenderSongLabel
+
+    ; Store New Values in WRAM variables
+    dec a
+    ld [wSelectionIndexTop], a
+    ld a, l
+    sub $C0
+    ld [wSelectionVAddrTop], a
+    jr nc, .noCarryTopAdjust
+    dec h
+.noCarryTopAdjust
+    ld a, h
+    or $98
+    and $9B
+    ld [wSelectionVAddrTop+1], a
+    ld a, [wSelectionVAddrBottom]
+    ld l, a
+    ld a, [wSelectionVAddrBottom+1]
+    ld h, a
+    ld a, l
+    sub $60
+    ld [wSelectionVAddrBottom], a
+    jr nc, .noCarryBottomAdjust
+    dec h
+.noCarryBottomAdjust
+    ld a, h
+    or $98
+    and $9B
+    ld [wSelectionVAddrBottom+1], a
+    ld a, [wSelectionIndexBottom]
+    dec a
+    ld [wSelectionIndexBottom], a
+
+    jr .noUpDown
+.pressedDown
+    ; # Down Press Handler
+    ; Update hChangeSCY
+    ld b, SEL_HEIGHT
+    ldh a, [hChangeSCY]
+    add b
+    ldh [hChangeSCY], a
+
+    ; Pre-render bottom song label
+    ld a, [wSelectionVAddrBottom]
+    ld l, a
+    ld a, [wSelectionVAddrBottom+1]
+    ld h, a
+    ld a, [wSelectionIndexBottom]
+    call RenderSongLabel
+
+    ; Store New Values in WRAM variables
+    inc a
+    ld [wSelectionIndexBottom], a
+    ld a, l
+    ld [wSelectionVAddrBottom], a
+    ld a, h
+    ld [wSelectionVAddrBottom+1], a
+    ld a, [wSelectionVAddrTop]
+    ld l, a
+    ld a, [wSelectionVAddrTop+1]
+    ld h, a
+    ld de, $0060
+    add hl, de
+    ld a, l
+    ld [wSelectionVAddrTop], a
+    ld a, h
+    or $98
+    and $9B
+    ld [wSelectionVAddrTop+1], a
+    ld a, [wSelectionIndexTop]
+    inc a
+    ld [wSelectionIndexTop], a
+
 .noUpDown
 
 .skipInputCheck
-    jr SongMenuLoop
+    jp SongMenuLoop
     
 
 
@@ -197,13 +289,14 @@ SongMenuLoop:
 
 ;----------------------------------------------------------------------------
 ; Input:
-;  * A  - Song Index
-;  * HL - VRAM Pointer
+;  * A  - Song Index   (Preserved)
+;  * HL - VRAM Pointer (Set to next valid value)
 RenderSongLabel:
     ; Check if index is out of range
     cp SongEntryCounter
     jr c, .inRange
     sub SongEntryCounter
+    jr RenderSongLabel
 .inRange
 
     ; Preserve VRAM Pointer
@@ -245,9 +338,11 @@ RenderSongLabel:
     adc h
     sub l
     ld h, a
+    ld a, h
+    and $9B
+    ld h, a
     ld a, l
     and $E0
-    inc a
     ld l, a
     call Strcpy
 
@@ -350,13 +445,14 @@ SongMenuOAM:
 db LY_SELECT + (SEL_HEIGHT/2) + 12, $0A, $01, $00
 EndSongMenuOAM:
 
-str1: db "Totakas Song", 0
-str2: db "Kazumi Totaka", 0
-str3: db "Another Song", 0
-str4: db "Another Artist", 0
-
 
 
 SECTION "Song Selection HRAM", HRAM
 hChangeSCY: db
 hSelectedSong: db
+
+SECTION "Song Selection WRAM", WRAM0
+wSelectionVAddrTop: dw
+wSelectionVAddrBottom: dw
+wSelectionIndexTop: db
+wSelectionIndexBottom: db

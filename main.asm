@@ -81,6 +81,7 @@ Main::
     ldh [rLCDC], a
 
     ; Initialize Variables
+    ld sp, $CFFF
     ldh [hPressedKeys], a
     ldh [hHeldKeys], a
 
