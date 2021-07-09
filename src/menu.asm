@@ -87,15 +87,13 @@ InitMenu:
     call Memset
 
     ; Render Initial Song List
-    xor a
+    ld a, SongEntryCounter - 3
     ld b, 7
     ld hl, $9BC0
 .initSongList
-    push af
     push bc
     call RenderSongLabel
     pop bc
-    pop af
     inc a
     dec b
     jr nz, .initSongList
@@ -205,7 +203,7 @@ RenderSongLabel:
     ; Check if index is out of range
     cp SongEntryCounter
     jr c, .inRange
-    and SongEntryCounter-1
+    sub SongEntryCounter
 .inRange
 
     ; Preserve VRAM Pointer
@@ -217,6 +215,7 @@ RenderSongLabel:
     and $E0
     ld l, a
     pop af
+    push af
     push hl
 
     ; Fetch Pointer to Song header and offset by $0F (Start of Song Title)
@@ -265,6 +264,7 @@ RenderSongLabel:
     call Memset
 
     ; Return from Subroutine
+    pop af
     ret
 
 
