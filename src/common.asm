@@ -1,3 +1,15 @@
+;----------------------------------------------------------------------------
+; Common Constant Definitions
+;----------------------------------------------------------------------------
+DEF BTN_A       EQU $01
+DEF BTN_B       EQU $02
+DEF BTN_SELECT  EQU $04
+DEF BTN_START   EQU $08
+DEF BTN_DPAD_R  EQU $10
+DEF BTN_DPAD_L  EQU $20
+DEF BTN_DPAD_U  EQU $40
+DEF BTN_DPAD_D  EQU $80
+
 SECTION "Common Routines", ROM0
 ;----------------------------------------------------------------------------
 ; Input:
@@ -116,8 +128,10 @@ DEF STATR_FLIP_WIN_EN_MENU EQU $01
 
 
 SECTION "Common HRAM", HRAM
+; Button order: Down, Up, Left, Right, Start, select, B, A
 hHeldKeys: db
 hPressedKeys: db
+
 hIndexSTAT: db
 
 

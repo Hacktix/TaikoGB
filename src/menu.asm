@@ -78,6 +78,7 @@ InitMenu:
     ldh [rWX], a
     xor a
     ldh [rSCY], a
+    ldh [hChangeSCY], a
     inc a
     ldh [hIndexSTAT], a           ; Set STAT Handler to $01 (= ToggleWindow_STAT)
     ld a, STATF_LYC
@@ -110,7 +111,7 @@ InitMenu:
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_BG8000 | LCDCF_OBJON | LCDCF_WINON | LCDCF_WIN9C00
     ldh [rLCDC], a
 
-    
+
 ;----------------------------------------------------------------------------
 ; Main Loop for the Song Selection Menu Game State
 ;----------------------------------------------------------------------------
@@ -121,8 +122,48 @@ SongMenuLoop:
     cp SCRN_Y
     jr c, SongMenuLoop
 
-    ; Fetch Input State
+    ; Check if scrolling should be done
+    ldh a, [hChangeSCY]
+    and a
+    jr z, .noScrollingNeeded
+
+    ; Check whether to increment or decrement & update SCY
+    bit 7, a
+    jr z, .scrollInc
+    inc a
+    ldh [hChangeSCY], a
+    ldh a, [rSCY]
+    dec a
+    jr .endScroll
+.scrollInc
+    dec a
+    ldh [hChangeSCY], a
+    ldh a, [rSCY]
+    inc a
+.endScroll
+    ldh [rSCY], a
+    jr .skipInputCheck
+.noScrollingNeeded
+
+    ; Fetch Input State & Check for Up/Down Inputs
     call FetchInput
+    ldh a, [hHeldKeys]
+    and BTN_DPAD_D | BTN_DPAD_U
+    jr z, .noUpDown
+
+    ; Set new hChangeSCY depending on input
+    and BTN_DPAD_D
+    ld a, SEL_HEIGHT
+    jr nz, .pressedUp
+    ld a, -SEL_HEIGHT
+.pressedUp
+    ld b, a
+    ldh a, [hChangeSCY]
+    add b
+    ldh [hChangeSCY], a
+.noUpDown
+
+.skipInputCheck
 
     jr SongMenuLoop
 
@@ -213,3 +254,8 @@ str1: db "Totakas Song", 0
 str2: db "Kazumi Totaka", 0
 str3: db "Another Song", 0
 str4: db "Another Artist", 0
+
+
+
+SECTION "Song Selection HRAM", HRAM
+hChangeSCY: db
