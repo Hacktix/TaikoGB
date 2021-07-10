@@ -1,6 +1,6 @@
 include "include/hUGE.inc"
 
-SECTION "Song Data", ROMX
+SECTION "Song Data - Totaka", ROMX
 
 totaka::
 db 20
