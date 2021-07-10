@@ -5,6 +5,7 @@ DEF LY_SELECT        EQU $34
 DEF SEL_HEIGHT       EQU 24
 DEF MENU_SCX         EQU -14
 DEF SEL_SCROLL_SPEED EQU 3
+DEF SEL_PLAY_CD      EQU 120
 
 SECTION "Song Menu", ROM0
 ;----------------------------------------------------------------------------
@@ -59,6 +60,8 @@ InitMenu:
 
     ;----------------------------------------------------------------------------
     ; Initialize Registers & Variables
+
+    ; Scrolling & Window
     ld a, MENU_SCX
     ldh [rSCX], a
     ld a, 7
@@ -66,13 +69,28 @@ InitMenu:
     xor a
     ldh [rSCY], a
     ldh [hChangeSCY], a
-    ldh [hSelectedSong], a
+
+    ; LYC & STAT Registers (+ STAT Handler Index)
     inc a
     ldh [hIndexSTAT], a           ; Set STAT Handler to $01 (= ToggleWindow_STAT)
     ld a, STATF_LYC
     ldh [rSTAT], a
     ld a, 15
     ldh [rLYC], a
+
+    ; Song Preview
+    ld a, SEL_PLAY_CD
+    ldh [hSelectedSongCooldown], a
+    xor a
+    call InitSongPreview
+
+    ; Audio Registers
+    ld a, $80
+    ld [rAUDENA], a
+    ld a, $FF
+    ld [rAUDTERM], a
+    ld a, $77
+    ld [rAUDVOL], a
 
     ; VAddr & Index Variables
     ld a, $60
@@ -236,6 +254,11 @@ SongMenuLoop:
     dec a
     ld [wSelectionIndexBottom], a
 
+    ; Update Song Preview Variables
+    ldh a, [hSelectedSong]
+    dec a
+    call InitSongPreview
+
     jr .noUpDown
 .pressedDown
     ; # Down Press Handler
@@ -276,7 +299,22 @@ SongMenuLoop:
     inc a
     ld [wSelectionIndexTop], a
 
+    ; Update Song Preview Variables
+    ldh a, [hSelectedSong]
+    inc a
+    call InitSongPreview
+
 .noUpDown
+
+    ; Check song play cooldown
+    ldh a, [hSelectedSongCooldown]
+    and a
+    jr z, .doPlaySong
+    dec a
+    ldh [hSelectedSongCooldown], a
+    jr .skipInputCheck
+.doPlaySong
+    call _hUGE_dosound
 
 .skipInputCheck
     jp SongMenuLoop
@@ -286,6 +324,29 @@ SongMenuLoop:
 ;----------------------------------------------------------------------------
 ; Song Selection Menu Subroutines
 ;----------------------------------------------------------------------------
+
+InitSongPreview:
+    ; Bounds Checking
+    cp SongEntryCounter
+    jr c, .inRange
+    sub SongEntryCounter
+    jr InitSongPreview
+.inRange
+
+    ; Load pointer & initialize
+    ldh [hSelectedSong], a
+    ld l, a
+    ld h, $00
+    ld de, MapsetTable
+    add hl, hl
+    add hl, de
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    call GetPointerAbs
+    call hUGE_init
+    ld a, SEL_PLAY_CD
+    ldh [hSelectedSongCooldown], a
 
 ;----------------------------------------------------------------------------
 ; Input:
@@ -450,6 +511,7 @@ EndSongMenuOAM:
 SECTION "Song Selection HRAM", HRAM
 hChangeSCY: db
 hSelectedSong: db
+hSelectedSongCooldown: db
 
 SECTION "Song Selection WRAM", WRAM0
 wSelectionVAddrTop: dw

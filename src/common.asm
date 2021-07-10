@@ -56,6 +56,37 @@ Strcpy::
     jr Strcpy
 
 ;----------------------------------------------------------------------------
+; Input:
+;  HL - Pointer Memory Address
+;
+; Output:
+;  HL - Resulting memory address
+;  ROM Bank Number set automatically
+;  Trashes BC
+;----------------------------------------------------------------------------
+GetPointerAbs::
+    ; Set lower ROM Bank byte
+    ld a, [hli]
+    ld [rROMB0], a
+
+    ; Fetch Low Address Byte
+    ld a, [hli]
+    ld b, a
+
+    ; Fetch High Address Byte & High ROM Bank Bit then return
+    ld a, [hl]
+    sla a
+    ld h, a
+    ld a, $01
+    jr c, .highBitSet
+    dec a
+.highBitSet
+    ld [rROMB1], a
+    srl h
+    ld l, b               ; Preserved from previous fetch
+    ret
+
+;----------------------------------------------------------------------------
 ; Fetches the input state to the two corresponding HRAM addresses
 ;----------------------------------------------------------------------------
 FetchInput:
