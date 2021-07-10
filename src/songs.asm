@@ -28,10 +28,10 @@ ENDM
 SECTION "Mapset Table", ROM0
 
 ; Format:     SongEntry <song_ident>, <easy_map_ptr>, <medium_map_ptr>, <hard_map_ptr>, <extreme_map_ptr>, <song_title>,          <artist_name>
-MapsetTotaka: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Totakas Song       ", " Kazumi Totaka"
+MapsetTotaka: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Totaka's Song      ", " Kazumi Totaka"
 MapsetDummy0: SongEntry birthday,     NULL,           NULL,             NULL,           NULL,              "Happy Birthday     ", " Someone Maybe idk"
-MapsetDummy1: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song B       ", " Dummy Artist B"
-MapsetDummy2: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song C       ", " Dummy Artist C"
+MapsetDummy1: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Eleven Eight       ", " Levi Niha"
+MapsetDummy2: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Renzokuken         ", " HERO DIES FIRST"
 MapsetDummy3: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song D       ", " Dummy Artist D"
 MapsetDummy4: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song E       ", " Dummy Artist E"
 MapsetDummy5: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song F       ", " Dummy Artist F"

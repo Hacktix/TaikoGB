@@ -169,13 +169,15 @@ hIndexSTAT: db
 
 SECTION "Shared Graphics", ROMX, BANK[1]
 
-FontUppercase:
+Fontset:
+INCBIN "gfx/alphabet_symbols1.2bpp"
+INCBIN "gfx/alphabet_numbers.2bpp"
+INCBIN "gfx/alphabet_symbols2.2bpp"
 INCBIN "gfx/alphabet_caps.2bpp"
-EndFontUppercase:
-
-FontLowercase:
+INCBIN "gfx/alphabet_symbols3.2bpp"
 INCBIN "gfx/alphabet_low.2bpp"
-EndFontLowercase:
+INCBIN "gfx/alphabet_symbols4.2bpp"
+EndFontset:
 
 CommonTiles:
 INCBIN "gfx/separator.2bpp"

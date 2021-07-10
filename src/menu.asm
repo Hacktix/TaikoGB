@@ -37,13 +37,9 @@ InitMenu:
     ; Load Tile Data into VRAM
 
     ; Load Font into VRAM
-    ld hl, $8410
-    ld de, FontUppercase
-    ld bc, EndFontUppercase - FontUppercase
-    call Memcpy
-    ld hl, $8610
-    ld de, FontLowercase
-    ld bc, EndFontLowercase - FontLowercase
+    ld hl, $8210
+    ld de, Fontset
+    ld bc, EndFontset - Fontset
     call Memcpy
 
     ; Load cursor into VRAM
