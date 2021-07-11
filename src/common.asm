@@ -87,6 +87,25 @@ GetPointerAbs::
     ret
 
 ;----------------------------------------------------------------------------
+; Input:
+;  DE - Pointer to Tilemap Data
+;  HL - Pointer to VRAM
+;----------------------------------------------------------------------------
+LoadTilemap:
+    ld a, [de]
+    and a
+    ret z
+    inc de
+    ld b, a
+    ld a, [de]
+    inc de
+.loadLoop
+    ld [hli], a
+    dec b
+    jr nz, .loadLoop
+    jr LoadTilemap
+
+;----------------------------------------------------------------------------
 ; Fetches the input state to the two corresponding HRAM addresses
 ;----------------------------------------------------------------------------
 FetchInput:
