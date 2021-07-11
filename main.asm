@@ -85,6 +85,7 @@ Main::
     ld sp, $CFFF
     ldh [hPressedKeys], a
     ldh [hHeldKeys], a
+    ldh [hSelectedSong], a
 
     ; Initialize Audio Registers
     ld a, $80

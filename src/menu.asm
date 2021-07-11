@@ -77,7 +77,7 @@ InitMenu:
     ; Song Preview
     ld a, SEL_PLAY_CD
     ldh [hSelectedSongCooldown], a
-    xor a
+    ldh a, [hSelectedSong]
     call InitSongPreview
 
     ; VAddr & Index Variables
@@ -88,7 +88,8 @@ InitMenu:
     ld [wSelectionVAddrTop+1], a
     ld a, $9A
     ld [wSelectionVAddrBottom+1], a
-    ld a, SongEntryCounter - 4
+    ldh a, [hSelectedSong]
+    add 4
     ld [wSelectionIndexTop], a
 
     ;----------------------------------------------------------------------------
@@ -104,7 +105,8 @@ InitMenu:
     call Memset
 
     ; Render Initial Song List
-    ld a, SongEntryCounter - 3
+    ldh a, [hSelectedSong]
+    sub 3
     ld b, 7
     ld hl, $9BC0
 .initSongList
@@ -293,7 +295,6 @@ SongMenuLoop:
     call InitSongPreview
 
 .noUpDown
-
     ; Check for A/START Inputs
     ldh a, [hPressedKeys]
     and BTN_A | BTN_START
@@ -330,6 +331,10 @@ SongMenuLoop:
 ; Song Selection Menu Subroutines
 ;----------------------------------------------------------------------------
 
+;----------------------------------------------------------------------------
+; Initializes the preview of a song with a given index.
+; Input:
+;  * A  - Song Index
 InitSongPreview:
     ; Bounds Checking
     cp SongEntryCounter
@@ -354,6 +359,7 @@ InitSongPreview:
     ldh [hSelectedSongCooldown], a
 
 ;----------------------------------------------------------------------------
+; Renders a song label absed on the given parameters.
 ; Input:
 ;  * A  - Song Index   (Preserved)
 ;  * HL - VRAM Pointer (Set to next valid value)
