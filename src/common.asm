@@ -87,6 +87,25 @@ GetPointerAbs::
     ret
 
 ;----------------------------------------------------------------------------
+; Input:
+;  DE - Pointer to Tilemap Data
+;  HL - Pointer to VRAM
+;----------------------------------------------------------------------------
+LoadTilemap:
+    ld a, [de]
+    and a
+    ret z
+    inc de
+    ld b, a
+    ld a, [de]
+    inc de
+.loadLoop
+    ld [hli], a
+    dec b
+    jr nz, .loadLoop
+    jr LoadTilemap
+
+;----------------------------------------------------------------------------
 ; Fetches the input state to the two corresponding HRAM addresses
 ;----------------------------------------------------------------------------
 FetchInput:
@@ -120,6 +139,18 @@ FetchInput:
 	ld a, b
 	ldh [hHeldKeys], a
     ret
+
+;----------------------------------------------------------------------------
+; OAM DMA Routine, should be copied to HRAM
+;----------------------------------------------------------------------------
+OAMDMA:
+	ldh [rDMA], a
+	ld a, OAM_COUNT
+.wait
+	dec a
+	jr nz, .wait
+	ret
+.end
 
 
 
@@ -159,6 +190,8 @@ DEF STATR_FLIP_WIN_EN_MENU EQU $01
 
 
 SECTION "Common HRAM", HRAM
+hOAMDMA: ds OAMDMA.end - OAMDMA
+
 ; Button order: Down, Up, Left, Right, Start, select, B, A
 hHeldKeys: db
 hPressedKeys: db

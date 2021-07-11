@@ -77,16 +77,8 @@ InitMenu:
     ; Song Preview
     ld a, SEL_PLAY_CD
     ldh [hSelectedSongCooldown], a
-    xor a
+    ldh a, [hSelectedSong]
     call InitSongPreview
-
-    ; Audio Registers
-    ld a, $80
-    ld [rAUDENA], a
-    ld a, $FF
-    ld [rAUDTERM], a
-    ld a, $77
-    ld [rAUDVOL], a
 
     ; VAddr & Index Variables
     ld a, $60
@@ -96,7 +88,8 @@ InitMenu:
     ld [wSelectionVAddrTop+1], a
     ld a, $9A
     ld [wSelectionVAddrBottom+1], a
-    ld a, SongEntryCounter - 4
+    ldh a, [hSelectedSong]
+    add 4
     ld [wSelectionIndexTop], a
 
     ;----------------------------------------------------------------------------
@@ -112,7 +105,8 @@ InitMenu:
     call Memset
 
     ; Render Initial Song List
-    ld a, SongEntryCounter - 3
+    ldh a, [hSelectedSong]
+    sub 3
     ld b, 7
     ld hl, $9BC0
 .initSongList
@@ -301,7 +295,23 @@ SongMenuLoop:
     call InitSongPreview
 
 .noUpDown
+    ; Check for A/START Inputs
+    ldh a, [hPressedKeys]
+    and BTN_A | BTN_START
+    jr z, .noStartGame
 
+    ; Wait for VBlank
+.startGameWaitVBL
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr nz, .startGameWaitVBL
+    
+    ; Turn off LCD & Initialize Game
+    xor a
+    ldh [rLCDC], a
+    jp InitGame
+
+.noStartGame
     ; Check song play cooldown
     ldh a, [hSelectedSongCooldown]
     and a
@@ -321,6 +331,10 @@ SongMenuLoop:
 ; Song Selection Menu Subroutines
 ;----------------------------------------------------------------------------
 
+;----------------------------------------------------------------------------
+; Initializes the preview of a song with a given index.
+; Input:
+;  * A  - Song Index
 InitSongPreview:
     ; Bounds Checking
     cp SongEntryCounter
@@ -345,6 +359,7 @@ InitSongPreview:
     ldh [hSelectedSongCooldown], a
 
 ;----------------------------------------------------------------------------
+; Renders a song label absed on the given parameters.
 ; Input:
 ;  * A  - Song Index   (Preserved)
 ;  * HL - VRAM Pointer (Set to next valid value)
