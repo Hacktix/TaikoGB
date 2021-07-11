@@ -132,7 +132,6 @@ InitGame:
 
     ; PPU Registers
     xor a
-    ldh [rSCY], a
     ldh [rWY], a
     dec a
     ldh [rLYC], a
@@ -140,6 +139,7 @@ InitGame:
     ldh [rWX], a
     ld a, -4
     ldh [rSCX], a
+    ldh [rSCY], a
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
