@@ -11,7 +11,7 @@ RM_F = rm -f
 ASFLAGS = -h
 LDFLAGS = -w -n taiko.sym
 FIXFLAGS = -v -p $(PADVAL) -t $(NAME) -m 0x1b -r 0x02
-GFXFLAGS = -T -u -v -f
+GFXFLAGS = -u -v -f
 
 INCPATH = include
 IMAGES = $(shell find . -name "*.png")
