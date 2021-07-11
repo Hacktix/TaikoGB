@@ -3,6 +3,7 @@ INCLUDE "src/strings.asm"
 INCLUDE "src/songs.asm"
 INCLUDE "src/common.asm"
 INCLUDE "src/menu.asm"
+INCLUDE "src/game.asm"
 
 SECTION "Vectors", ROM0[0]
 
@@ -84,6 +85,25 @@ Main::
     ld sp, $CFFF
     ldh [hPressedKeys], a
     ldh [hHeldKeys], a
+
+    ; Initialize Audio Registers
+    ld a, $80
+    ld [rAUDENA], a
+    ld a, $FF
+    ld [rAUDTERM], a
+    ld a, $77
+    ld [rAUDVOL], a
+
+    ; Initialize OAM DMA Routine in HRAM
+	ld hl, OAMDMA
+	ld b, OAMDMA.end - OAMDMA
+    ld c, LOW(hOAMDMA)
+.copyOAMDMA
+	ld a, [hli]
+	ldh [c], a
+	inc c
+	dec b
+	jr nz, .copyOAMDMA
 
     ; Jump to initialization of next game state
     jp InitMenu

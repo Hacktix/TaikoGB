@@ -121,6 +121,18 @@ FetchInput:
 	ldh [hHeldKeys], a
     ret
 
+;----------------------------------------------------------------------------
+; OAM DMA Routine, should be copied to HRAM
+;----------------------------------------------------------------------------
+OAMDMA:
+	ldh [rDMA], a
+	ld a, OAM_COUNT
+.wait
+	dec a
+	jr nz, .wait
+	ret
+.end
+
 
 
 SECTION "STAT Handler", ROM0
@@ -159,6 +171,8 @@ DEF STATR_FLIP_WIN_EN_MENU EQU $01
 
 
 SECTION "Common HRAM", HRAM
+hOAMDMA: ds OAMDMA.end - OAMDMA
+
 ; Button order: Down, Up, Left, Right, Start, select, B, A
 hHeldKeys: db
 hPressedKeys: db

@@ -80,14 +80,6 @@ InitMenu:
     xor a
     call InitSongPreview
 
-    ; Audio Registers
-    ld a, $80
-    ld [rAUDENA], a
-    ld a, $FF
-    ld [rAUDTERM], a
-    ld a, $77
-    ld [rAUDVOL], a
-
     ; VAddr & Index Variables
     ld a, $60
     ld [wSelectionVAddrTop], a
@@ -302,6 +294,23 @@ SongMenuLoop:
 
 .noUpDown
 
+    ; Check for A/START Inputs
+    ldh a, [hPressedKeys]
+    and BTN_A | BTN_START
+    jr z, .noStartGame
+
+    ; Wait for VBlank
+.startGameWaitVBL
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr nz, .startGameWaitVBL
+    
+    ; Turn off LCD & Initialize Game
+    xor a
+    ldh [rLCDC], a
+    jp InitGame
+
+.noStartGame
     ; Check song play cooldown
     ldh a, [hSelectedSongCooldown]
     and a
