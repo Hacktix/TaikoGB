@@ -185,12 +185,13 @@ InitGame:
     ldh [hSongPlayDelay], a
     pop hl
 
-    ; Copy map to WRAM, preserve length in stack
+    ; Copy map to WRAM, preserve length & WRAM pointer in stack
     push bc
     ld d, h
     ld e, l
     inc de
     ld hl, wMapData
+    push hl
     call Memcpy
 
     ;----------------------------------------------------------------------------
@@ -221,8 +222,10 @@ InitGame:
     call hUGE_init
 
     ; Game Variables
-    xor a
+    ld a, 1
     ldh [hNextEventDelay], a
+    xor a
+    ldh [hPtrOAM], a
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
@@ -251,6 +254,153 @@ MainGameLoop:
     jr c, MainGameLoop
 
     ;----------------------------------------------------------------------------
+    ; Do OAM DMA
+    ld a, HIGH(wShadowOAM)
+    call hOAMDMA
+
+    ;----------------------------------------------------------------------------
+    ; Handle Events
+
+    ; Check Event Delay
+    ldh a, [hNextEventDelay]
+    dec a
+    ldh [hNextEventDelay], a
+    jp nz, .waitForEvent
+
+    ; Restore counters from stack & read next event byte
+    pop hl
+    pop bc
+    ld a, [hli]
+    dec bc
+
+    ; Check for A Circle Spawn
+    sla a
+    jr nc, .noPressA
+
+    ; Preserve Regs & Fetch Pointers
+    push af
+    push hl
+    ld h, HIGH(wShadowOAM)
+    ldh a, [hPtrOAM]
+    ld l, a
+
+    ; Load OAM Data
+    xor a
+    ld [hli], a
+    ld a, WX_NOTE_LANE + 5 + 4*8
+    ld [hli], a
+    inc hl
+    ld a, OAMF_PAL1
+    ld [hli], a
+    xor a
+    ld [hli], a
+    ld a, WX_NOTE_LANE + 13 + 4*8
+    ld [hli], a
+    inc hl
+    ld a, OAMF_PAL1 | OAMF_XFLIP
+    ld [hli], a
+
+    ; Update OAM Pointer
+    ld a, l
+    cp $9F
+    jr c, .oamInRangeA
+    xor a
+.oamInRangeA
+    ldh [hPtrOAM], a
+
+    ; Restore Registers
+    pop hl
+    pop af
+
+    ; Check for B Circle Spawn
+.noPressA
+    sla a
+    jr nc, .noPressB
+
+    ; Preserve Regs & Fetch Pointers
+    push af
+    push hl
+    ld h, HIGH(wShadowOAM)
+    ldh a, [hPtrOAM]
+    ld l, a
+
+    ; Load OAM Data
+    xor a
+    ld [hli], a
+    ld a, WX_NOTE_LANE + 5
+    ld [hli], a
+    inc hl
+    ld a, OAMF_PAL0
+    ld [hli], a
+    xor a
+    ld [hli], a
+    ld a, WX_NOTE_LANE + 13
+    ld [hli], a
+    inc hl
+    ld a, OAMF_PAL0 | OAMF_XFLIP
+    ld [hli], a
+
+    ; Update OAM Pointer
+    ld a, l
+    cp $9F
+    jr c, .oamInRangeB
+    xor a
+.oamInRangeB
+    ldh [hPtrOAM], a
+
+    ; Restore Registers
+    pop hl
+    pop af
+
+    ; Update Delay & Counters for Next Event
+.noPressB
+    ldh [hNextEventDelay], a
+    push bc
+    push hl
+
+    ; Update sprites in OAM
+.waitForEvent
+    ld hl, wShadowOAM
+    ld c, 20
+.circleUpdateLoop
+
+    ; Check if circle is off screen
+    ld a, [hl]
+    cp $FF
+    jr z, .offscreenCircle
+
+    ; Update Y Coordinate
+    ld b, a
+    ldh a, [hApproachSpeed]
+    add b
+    cp NOTE_HIT_LY
+    jr c, .noteInRange
+    ld a, $FF
+.noteInRange
+    ld [hli], a
+    inc hl
+    inc hl
+    inc hl
+    ld [hli], a
+    inc hl
+    inc hl
+    inc hl
+    dec c
+    jr nz, .circleUpdateLoop
+    jr .endCircleUpdate
+
+.offscreenCircle
+    ld a, 8
+    add l
+    ld l, a
+    adc h
+    sub l
+    ld h, a
+    dec c
+    jr nz, .circleUpdateLoop
+.endCircleUpdate
+
+    ;----------------------------------------------------------------------------
     ; Check initial song delay & do sound
 
     ; Check if delay is 0
@@ -261,12 +411,12 @@ MainGameLoop:
     ; Decrement delay and return to start of loop
     dec a
     ldh [hSongPlayDelay], a
-    jr MainGameLoop
+    jp MainGameLoop
 
     ; Play Sound and return to start of loop
 .doSound
     call _hUGE_dosound
-    jr MainGameLoop
+    jp MainGameLoop
 
 
 
@@ -283,6 +433,7 @@ SECTION "Main Game HRAM", HRAM
 hApproachSpeed: db
 hSongPlayDelay: db
 hNextEventDelay: db
+hPtrOAM: db
 
 
 
