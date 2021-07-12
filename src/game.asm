@@ -1,7 +1,22 @@
 ;----------------------------------------------------------------------------
 ; Constant Definitions
 ;----------------------------------------------------------------------------
-DEF WX_NOTE_LANE EQU 100
+
+; "Config" Constants
+DEF WX_NOTE_LANE     EQU 100
+
+; Tile Numbers
+DEF NOTE_LANE_TILE_L EQU $10
+DEF NOTE_LANE_TILE_R EQU $11
+DEF DRUM_TILE_START  EQU $04
+DEF LB_SCORE_START   EQU $94
+DEF LB_COMBO_START   EQU $97
+DEF NUM_TILE_BASE    EQU $80
+DEF CIRCLE_TILE_BASE EQU $02
+DEF LB_MISS_START    EQU $12
+DEF LB_OKAY_START    EQU $15
+DEF LB_GREAT_START   EQU $18
+DEF LB_PERFECT_START EQU $1B
 
 SECTION "Main Game", ROM0
 ;----------------------------------------------------------------------------
@@ -52,7 +67,7 @@ InitGame:
     ; Load Score Label
     ld hl, $9C00
     ld b, 3
-    ld a, $94
+    ld a, LB_SCORE_START
 .scoreLabelLoad
     ld [hli], a
     inc a
@@ -62,7 +77,7 @@ InitGame:
     ; Load Points Label
     ld hl, $9C20
     ld de, $9C40
-    ld a, $80
+    ld a, NUM_TILE_BASE
     ld b, 8
 .pointLabelLoad
     ld [hli], a
@@ -76,16 +91,16 @@ InitGame:
     ; Load Combo Label
     ld hl, $9E00
     ld b, 4
-    ld a, $97
+    ld a, LB_COMBO_START
 .comboLabelLoad
     ld [hli], a
     inc a
     dec b
     jr nz, .comboLabelLoad
     ld hl, $9DC0
-    ld [hl], $80
+    ld [hl], NUM_TILE_BASE
     ld hl, $9DE0
-    ld [hl], $8A
+    ld [hl], NUM_TILE_BASE + $0A
 
     ;----------------------------------------------------------------------------
     ; Load Tile Data into VRAM
@@ -114,7 +129,7 @@ InitGame:
     ld [hli], a
     inc a
     ld [hli], a
-    ld a, $03
+    ld a, CIRCLE_TILE_BASE
     ld [hli], a
     ld a, c
     xor OAMF_XFLIP
@@ -184,11 +199,11 @@ INCBIN "gfx/perfect.2bpp"
 EndGameTilesSpritesWindow:
 
 NoteLaneTilemap:
-db $01, $11, $01, $00, $01, $12, $01, $00, $01, $11, $01, $00, $01, $12, $19, $00, 0
+db 1, NOTE_LANE_TILE_L, 1, $00, 1, NOTE_LANE_TILE_R, 1, $00, 1, NOTE_LANE_TILE_L, 1, $00, 1, NOTE_LANE_TILE_R, $19, $00, 0
 
 TaikoTilemap:
-db $01, $04, $01, $05, $01, $06, $01, $00, $01, $04, $01, $05, $01, $06, $19, $00
-db $01, $07, $01, $08, $01, $09, $01, $00, $01, $07, $01, $08, $01, $09, $19, $00
-db $01, $0A, $01, $0D, $01, $0C, $01, $00, $01, $0A, $01, $0B, $01, $0C, $19, $00
-db $01, $0E, $01, $0F, $01, $10, $01, $00, $01, $0E, $01, $0F, $01, $10
+db 1, DRUM_TILE_START,   1, DRUM_TILE_START+1,  1, DRUM_TILE_START+2,  1, $00, 1, DRUM_TILE_START,   1, DRUM_TILE_START+1,  1, DRUM_TILE_START+2, $19, $00
+db 1, DRUM_TILE_START+3, 1, DRUM_TILE_START+4,  1, DRUM_TILE_START+5,  1, $00, 1, DRUM_TILE_START+3, 1, DRUM_TILE_START+4,  1, DRUM_TILE_START+5, $19, $00
+db 1, DRUM_TILE_START+6, 1, "B",                1, DRUM_TILE_START+8,  1, $00, 1, DRUM_TILE_START+6, 1, "A",                1, DRUM_TILE_START+8, $19, $00
+db 1, DRUM_TILE_START+9, 1, DRUM_TILE_START+10, 1, DRUM_TILE_START+11, 1, $00, 1, DRUM_TILE_START+9, 1, DRUM_TILE_START+10, 1, DRUM_TILE_START+11
 db 0
