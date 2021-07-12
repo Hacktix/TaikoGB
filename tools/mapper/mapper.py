@@ -1,11 +1,7 @@
+# A map editor for TaikoGB
 
 import os, pygame, pygame_menu, pygame.freetype, time
 from mutagen.mp3 import MP3
-
-# A map editor for TaikoGB
-# TODO: choose approach rate for map header
-# TODO: warnings on missing songs/output folder
-
 
 song_files = []
 num_songs = 0
@@ -30,8 +26,16 @@ WIDTH = 960
 HEIGHT = 540
 BG_COLOR = (100, 145, 10)
 
-APP_RATE = 1000
-APP_STEP = (HEIGHT - 40) / APP_RATE
+
+# The game supports 4 different approach rates defined in pixels per frame
+# these rates in milliseconds are:
+# 1: 1803
+# 2: 902
+# 3: 601
+# 4: 451
+selected_difficulty = 1
+app_rate = int(1803 / selected_difficulty)
+app_step = (HEIGHT - 40) / app_rate
 
 map_objects = [] # (offset, B/A)
 
@@ -92,19 +96,23 @@ def load_song(song_num):
     song_length = int(song.info.length * 1000)
 
 def draw_frame(song_pos):
-    global display_text
+    global display_text, selected_difficulty
     # Reset screen
     screen.fill(BG_COLOR)
 
     # Display current position in song (millis)
-    text_surface, rect = GAME_FONT.render("SONGPOS: {}".format(song_pos), (0, 0, 0))
+    text_surface, rect = GAME_FONT.render("Songpos: {}".format(song_pos), (0, 0, 0))
     screen.blit(text_surface, (0, 510))
 
+    # Display current selected speed mode
+    text_surface, rect = GAME_FONT.render("Current speed: {}".format(selected_difficulty), (0, 0, 0))
+    screen.blit(text_surface, (0, 480))
+
     # BEGIN ALIGNMENT LINES
-    temp_pos = song_pos % APP_RATE
+    temp_pos = song_pos % app_rate
     if temp_pos == 0:
         temp_pos = 1
-    alignment_height = (HEIGHT - 40) * (temp_pos / APP_RATE)
+    alignment_height = (HEIGHT - 40) * (temp_pos / app_rate)
     pygame.draw.line(screen, (70, 70, 70), (490, alignment_height), (574, alignment_height), 5)
     pygame.draw.line(screen, (70, 70, 70), (590, alignment_height), (674, alignment_height), 5)
     pygame.draw.line(screen, (70, 70, 70), (490, (alignment_height + ((HEIGHT - 40) // 2)) % (HEIGHT - 40)), (574, (alignment_height + ((HEIGHT - 40) // 2)) % (HEIGHT - 40)), 5)
@@ -127,11 +135,11 @@ def draw_frame(song_pos):
     # BEGIN MAP OBJECTS
     render_objects = []
     for object in map_objects:
-        if song_pos in range(object[0] - APP_RATE, object[0] + 1):
+        if song_pos in range(object[0] - app_rate, object[0] + 1):
             render_objects.append(object)
 
     for object in render_objects:
-        position = APP_STEP * (APP_RATE - (object[0] - song_pos))
+        position = app_step * (app_rate - (object[0] - song_pos))
         if object[1] == 1:
             screen.blit(circ1_img, (500, position - 64))
         else:
@@ -211,8 +219,7 @@ def export_map():
             break
         
     output_file_path = "output/" + song_files[selected_song].split(".")[0] + ".tgb"
-    drop_speed = 3
-    map_header = [len(output_data) & 0xFF, (len(output_data) >> 8) & 0xFF, drop_speed]
+    map_header = [len(output_data) & 0xFF, (len(output_data) >> 8) & 0xFF, selected_difficulty]
     with open(output_file_path, "wb") as fp:
         fp.write(bytearray(map_header + output_data))
 
@@ -221,7 +228,7 @@ def export_map():
         
         
 def handle_events():
-    global song_pos, map_objects, song_length, scroll_speed, edit_mode, selected_obj
+    global song_pos, map_objects, song_length, scroll_speed, edit_mode, selected_obj, selected_difficulty, app_rate, app_step
     cur_pos = pygame.mixer.music.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -266,6 +273,18 @@ def handle_events():
             elif event.key == pygame.K_END:
                 if not pygame.mixer.music.get_busy():
                     song_pos = song_length
+            elif event.key == pygame.K_UP:
+                selected_difficulty += 1
+                app_rate = int(1803 / selected_difficulty)
+                app_step = (HEIGHT - 40) / app_rate
+                
+                
+            elif event.key == pygame.K_DOWN:
+                selected_difficulty -= 1
+                if selected_difficulty < 1:
+                    selected_difficulty = 1
+                app_rate = int(1803 / selected_difficulty)
+                app_step = (HEIGHT - 40) / app_rate
         elif event.type == pygame.KEYUP:
             if (event.key == pygame.K_LSHIFT) or (event.key == pygame.K_LCTRL):
                 scroll_speed = 100

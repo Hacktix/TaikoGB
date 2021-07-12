@@ -15,6 +15,7 @@ You need pygame 2.0 or higher, pygame-menu 4.1.3 (that's the tested version) and
 |A                  |Edit mode (selects closes visible object)    |
 |E                  |Export map                                   |
 |Delete             |Deletes selected object in edit mode         |
+|Arrow up/down      |Changes map speed                            |
 |Home               |Jump to the beginning of the map             |
 |End                |Jump to the end of the map                   |
 
