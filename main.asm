@@ -1,5 +1,6 @@
 INCLUDE "hardware.inc"
 INCLUDE "src/strings.asm"
+INCLUDE "src/maps.asm"
 INCLUDE "src/songs.asm"
 INCLUDE "src/common.asm"
 INCLUDE "src/menu.asm"

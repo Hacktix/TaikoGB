@@ -4,6 +4,7 @@
 
 ; "Config" Constants
 DEF WX_NOTE_LANE     EQU 100
+DEF NOTE_HIT_LY      EQU $6C
 
 ; Tile Numbers
 DEF NOTE_LANE_TILE_L EQU $10
@@ -143,6 +144,56 @@ InitGame:
     call hOAMDMA
 
     ;----------------------------------------------------------------------------
+    ; Map Initialization
+    
+    ; Fetch Pointer to Map Data
+    ldh a, [hSelectedSong]
+    ld l, a
+    ld h, $00
+    ld de, MapsetTable
+    add hl, hl
+    add hl, de
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    ld b, 1     ; TODO: Load B with selected difficulty value
+.difficultySelectLoop
+    inc hl
+    inc hl
+    inc hl
+    dec b
+    jr nz, .difficultySelectLoop
+    call GetPointerAbs
+
+    ; Fetch map data length & approach speed
+    ld a, [hli]
+    ld c, a
+    ld a, [hli]
+    ld b, a
+    ld a, [hl]
+    ldh [hApproachSpeed], a
+
+    ; Set initial song delay based on approach speed
+    push hl
+    ld hl, InitDelayTable
+    add l
+    ld l, a
+    adc h
+    sub l
+    ld h, a
+    ld a, [hl]
+    ldh [hSongPlayDelay], a
+    pop hl
+
+    ; Copy map to WRAM, preserve length in stack
+    push bc
+    ld d, h
+    ld e, l
+    inc de
+    ld hl, wMapData
+    call Memcpy
+
+    ;----------------------------------------------------------------------------
     ; Initialize Registers & Variables
 
     ; PPU Registers
@@ -155,6 +206,23 @@ InitGame:
     ld a, -4
     ldh [rSCX], a
     ldh [rSCY], a
+
+    ; hUGEDriver Initialization
+    ldh a, [hSelectedSong]
+    ld l, a
+    ld h, $00
+    ld de, MapsetTable
+    add hl, hl
+    add hl, de
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    call GetPointerAbs
+    call hUGE_init
+
+    ; Game Variables
+    xor a
+    ldh [hNextEventDelay], a
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
@@ -170,13 +238,63 @@ InitGame:
     ld a, LCDCF_ON | LCDCF_BGON | LCDCF_BG9C00 | LCDCF_WIN9800 | LCDCF_OBJON | LCDCF_WINON | LCDCF_BG8000 | LCDCF_OBJ16
     ldh [rLCDC], a
 
-    jr @
+
+;----------------------------------------------------------------------------
+; Main Loop for actual Gameplay
+;----------------------------------------------------------------------------
+MainGameLoop:
+    ;----------------------------------------------------------------------------
+    ; Wait for VBlank
+    halt
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr c, MainGameLoop
+
+    ;----------------------------------------------------------------------------
+    ; Check initial song delay & do sound
+
+    ; Check if delay is 0
+    ldh a, [hSongPlayDelay]
+    and a
+    jr z, .doSound
+
+    ; Decrement delay and return to start of loop
+    dec a
+    ldh [hSongPlayDelay], a
+    jr MainGameLoop
+
+    ; Play Sound and return to start of loop
+.doSound
+    call _hUGE_dosound
+    jr MainGameLoop
+
+
+
+SECTION "Initial Delay Table", ROM0
+InitDelayTable:
+    db NOTE_HIT_LY/1
+    db NOTE_HIT_LY/2
+    db NOTE_HIT_LY/3
+    db NOTE_HIT_LY/4
+
+
+
+SECTION "Main Game HRAM", HRAM
+hApproachSpeed: db
+hSongPlayDelay: db
+hNextEventDelay: db
 
 
 
 SECTION "Shadow OAM", WRAM0, ALIGN[8]
 wShadowOAM::
     ds OAM_COUNT * 4
+
+
+
+SECTION "Map Data RAM", WRAM0, ALIGN[8]
+wMapData::
+    ds $1000
 
 
 
