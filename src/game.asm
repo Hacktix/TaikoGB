@@ -171,6 +171,7 @@ InitGame:
     ld a, [hli]
     ld b, a
     ld a, [hl]
+    dec a
     ldh [hApproachSpeed], a
 
     ; Set initial song delay based on approach speed
@@ -372,6 +373,7 @@ MainGameLoop:
     ; Update Y Coordinate
     ld b, a
     ldh a, [hApproachSpeed]
+    inc a
     add b
     cp NOTE_HIT_LY
     jr c, .noteInRange
