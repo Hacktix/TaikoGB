@@ -113,7 +113,9 @@ FetchInput:
     ld c, LOW(rP1)
 	ld a, $20
 	ldh [c], a
+REPT 6
 	ldh a, [c]
+ENDR
 	or $F0
 	ld b, a
 	swap b
@@ -121,7 +123,9 @@ FetchInput:
     ; Fetch Button State
 	ld a, $10
 	ldh [c], a
-	ldh a, [c]
+REPT 6
+    ldh a, [c]
+ENDR
 	and $0F
 	or $F0
 	xor b
