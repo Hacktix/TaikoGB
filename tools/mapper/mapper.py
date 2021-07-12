@@ -1,13 +1,10 @@
-from os import listdir
-import pygame, pygame_menu, pygame.freetype, time
+
+import os, pygame, pygame_menu, pygame.freetype, time
 from mutagen.mp3 import MP3
 
 # A map editor for TaikoGB
 # TODO: choose approach rate for map header
-# TODO: show "Export done"
-
-
-
+# TODO: warnings on missing songs/output folder
 
 
 song_files = []
@@ -39,20 +36,30 @@ APP_STEP = (HEIGHT - 40) / APP_RATE
 map_objects = [] # (offset, B/A)
 
 def init_mapper():
-    global song_files, num_songs, screen
-    song_files = listdir('songs')
-    num_songs = len(song_files)
-    
-    pygame.mixer.init()
-    pygame.font.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    if not os.path.isdir("songs"):
+        os.mkdir("songs")
+        print("'songs' folder was missing, created it!")
+    if not os.path.isdir("output"):
+        os.mkdir("output")
+        print("'output' folder was missing, created it!")
 
-    pygame.display.set_caption('TaikoGB mapper')
-    screen.fill(BG_COLOR)
-    text_surface, rect = GAME_FONT.render("SONGPOS: 0", (0, 0, 0))
-    
-    screen.blit(text_surface, (0, 510))
-    pygame.display.flip()
+    global song_files, num_songs, screen
+    song_files = os.listdir('songs')
+    num_songs = len(song_files)
+    if num_songs == 0:
+        print("The 'songs' folder needs to have atleast one song in it")
+        exit()
+    else:
+        pygame.mixer.init()
+        pygame.font.init()
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+        pygame.display.set_caption('TaikoGB mapper')
+        screen.fill(BG_COLOR)
+        text_surface, rect = GAME_FONT.render("SONGPOS: 0", (0, 0, 0))
+        
+        screen.blit(text_surface, (0, 510))
+        pygame.display.flip()
 
 def init_menu():
     global menu
@@ -146,23 +153,36 @@ def export_map():
     map_objects.sort()
     temp_objects = map_objects[:]
 
-    prev_offset = 0
+    
 
+    output_objects = []
     for i, object in enumerate(temp_objects):
         cur_offset = int((object[0] / 16.7) / 4)
-        temp_objects[i] = (cur_offset - prev_offset, object[1])
+        temp_objects[i] = (cur_offset, object[1])
+
+    for object in temp_objects:
+        if len(output_objects) > 0:
+            if object[0] == output_objects[-1][0]:
+                output_objects[-1] = (output_objects[-1][0], output_objects[-1][1] | object[1])
+            else:
+                output_objects.append(object)
+        else:
+            output_objects.append(object)
+
+    prev_offset = 0
+    for i, object in enumerate(output_objects):
+        cur_offset = object[0]
+        output_objects[i] = (cur_offset - prev_offset, object[1])
         prev_offset = cur_offset
 
-    total_objects = len(temp_objects)
-
     cur_pos = 0
-    cur_object = temp_objects[cur_pos]
+    cur_object = output_objects[cur_pos]
     cur_offset = cur_object[0]
     cur_keys = 0
     next_keys = cur_object[1]
     if cur_offset == 0:
         cur_pos += 1
-        cur_object = temp_objects[cur_pos]
+        cur_object = output_objects[cur_pos]
         cur_keys = next_keys
         cur_offset = cur_object[0]
         next_keys = cur_object[1]
@@ -181,7 +201,7 @@ def export_map():
         cur_pos += 1
                     
         try:
-            cur_object = temp_objects[cur_pos]
+            cur_object = output_objects[cur_pos]
             cur_keys = next_keys
             cur_offset = cur_object[0]
             next_keys = cur_object[1]
