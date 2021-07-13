@@ -3,8 +3,21 @@
 ;----------------------------------------------------------------------------
 
 ; "Config" Constants
-DEF WX_NOTE_LANE     EQU 100
-DEF NOTE_HIT_LY      EQU $6C
+DEF WX_NOTE_LANE       EQU 100
+DEF NOTE_HIT_LY        EQU $6C
+DEF NOTE_DESPAWN_RANGE EQU 24
+
+DEF BTN_DRUM_A         EQU BTN_A | BTN_DPAD_R
+DEF BTN_DRUM_B         EQU BTN_B | BTN_DPAD_L
+
+DEF RANGE_OKAY         EQU 24
+DEF RANGE_GREAT        EQU 16
+DEF RANGE_PERFECT      EQU 8
+
+DEF INDEX_OKAY         EQU 0
+DEF INDEX_GREAT        EQU 1
+DEF INDEX_PERFECT      EQU 2
+DEF INDEX_MISS         EQU 3
 
 ; Tile Numbers
 DEF NOTE_LANE_TILE_L EQU $10
@@ -260,7 +273,229 @@ MainGameLoop:
     call hOAMDMA
 
     ;----------------------------------------------------------------------------
-    ; Handle Events
+    ; Input Handler
+
+    ; Fetch current input state
+    call FetchInput
+
+    ; Check for A Drum Button Press
+    ldh a, [hPressedKeys]
+    and BTN_DRUM_A
+    jr z, .noDrumPressA
+
+    ; Search for lowest A Drum Circle
+    ld hl, wShadowOAM
+    ld b, l
+    ld c, l
+    ld d, OAM_COUNT/2
+.circleScanLoopA
+    ; Load Y-Pos of next circle
+    ld a, [hli]
+    cp $FF
+    jr z, .noLowestCircleA
+    cp b
+    jr c, .noLowestCircleA
+    ; Check if circle is actually A-drum circle via palette bit
+    inc hl
+    inc hl
+    push af
+    ld a, [hli]
+    and OAMF_PAL1
+    jr z, .noLowestCirclePalA
+    ; Update Output Registers
+    pop af
+    ld b, a                    ; Load lowest Circle Y into B
+    ld c, l                    ; Load lowest Circle Address into C
+    dec c
+    dec c
+    dec c
+    dec c
+    inc hl
+    inc hl
+    inc hl
+    inc hl
+    dec d
+    jr nz, .circleScanLoopA
+    jr .endCircleScanA
+.noLowestCirclePalA
+    pop af
+    dec hl
+    dec hl
+    dec hl
+.noLowestCircleA
+    ; Go to next circle
+    ld a, 7
+    add l
+    ld l, a
+    dec d
+    jr nz, .circleScanLoopA
+.endCircleScanA
+
+    ; If note is above OKAY range act as if nothing happened
+    ld a, b
+    cp NOTE_HIT_LY - RANGE_OKAY
+    jr c, .noDrumPressA
+
+    ; Move note out of frame
+    ld h, HIGH(wShadowOAM)
+    ld l, c
+    ld [hl], $FF
+    ld a, 4
+    add l
+    ld l, a
+    ld [hl], $FF
+
+    ; Get difference between perfect hit and circle sprite
+    ld a, NOTE_HIT_LY
+    sub b
+    jr nc, .noAdjustDiffA
+    ld a, b
+    sub NOTE_HIT_LY
+.noAdjustDiffA
+
+    ; Determine hit range
+    ld b, INDEX_MISS
+    cp RANGE_OKAY
+    jr nc, .endHitRangeCalcA
+    ld b, INDEX_OKAY
+    cp RANGE_GREAT
+    jr nc, .endHitRangeCalcA
+    ld b, INDEX_GREAT
+    cp RANGE_PERFECT
+    jr nc, .endHitRangeCalcA
+    ld b, INDEX_PERFECT
+.endHitRangeCalcA
+
+    ; TODO: Update score & combo
+
+    ; Render Accuracy Labels
+    ld hl, $9A24
+    ld a, b
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustA
+    inc b
+.noLabelAdjustA
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+.noDrumPressA
+
+    ; Check for B Button Presses
+    ldh a, [hPressedKeys]
+    and BTN_DRUM_B
+    jr z, .noDrumPressB
+
+    ; Search for lowest A Drum Circle
+    ld hl, wShadowOAM
+    ld b, l
+    ld c, l
+    ld d, OAM_COUNT/2
+.circleScanLoopB
+    ; Load Y-Pos of next circle
+    ld a, [hli]
+    cp $FF
+    jr z, .noLowestCircleB
+    cp b
+    jr c, .noLowestCircleB
+    ; Check if circle is actually A-drum circle via palette bit
+    inc hl
+    inc hl
+    push af
+    ld a, [hli]
+    and OAMF_PAL1
+    jr nz, .noLowestCirclePalB
+    ; Update Output Registers
+    pop af
+    ld b, a                    ; Load lowest Circle Y into B
+    ld c, l                    ; Load lowest Circle Address into C
+    dec c
+    dec c
+    dec c
+    dec c
+    inc hl
+    inc hl
+    inc hl
+    inc hl
+    dec d
+    jr nz, .circleScanLoopB
+    jr .endCircleScanB
+.noLowestCirclePalB
+    pop af
+    dec hl
+    dec hl
+    dec hl
+.noLowestCircleB
+    ; Go to next circle
+    ld a, 7
+    add l
+    ld l, a
+    dec d
+    jr nz, .circleScanLoopB
+.endCircleScanB
+
+    ; If note is above OKAY range act as if nothing happened
+    ld a, b
+    cp NOTE_HIT_LY - RANGE_OKAY
+    jr c, .noDrumPressB
+
+    ; Move note out of frame
+    ld h, HIGH(wShadowOAM)
+    ld l, c
+    ld [hl], $FF
+    ld a, 4
+    add l
+    ld l, a
+    ld [hl], $FF
+
+    ; Get difference between perfect hit and circle sprite
+    ld a, NOTE_HIT_LY
+    sub b
+    jr nc, .noAdjustDiffB
+    ld a, b
+    sub NOTE_HIT_LY
+.noAdjustDiffB
+
+    ; Determine hit range
+    ld b, INDEX_MISS
+    cp RANGE_OKAY
+    jr nc, .endHitRangeCalcB
+    ld b, INDEX_OKAY
+    cp RANGE_GREAT
+    jr nc, .endHitRangeCalcB
+    ld b, INDEX_GREAT
+    cp RANGE_PERFECT
+    jr nc, .endHitRangeCalcB
+    ld b, INDEX_PERFECT
+.endHitRangeCalcB
+
+    ; TODO: Update score & combo
+
+    ; Render Accuracy Labels
+    ld hl, $9A20
+    ld a, b
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustB
+    inc b
+.noLabelAdjustB
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+.noDrumPressB
+
+    ;----------------------------------------------------------------------------
+    ; Handle Event Spawning
 
     ; Check Event Delay
     ldh a, [hNextEventDelay]
@@ -359,7 +594,10 @@ MainGameLoop:
     push bc
     push hl
 
-    ; Update sprites in OAM
+    ;----------------------------------------------------------------------------
+    ; Update Sprites in Shadow OAM
+
+    ; Initialize Update Loop
 .waitForEvent
     ld hl, wShadowOAM
     ld c, 20
@@ -375,7 +613,7 @@ MainGameLoop:
     ldh a, [hApproachSpeed]
     inc a
     add b
-    cp NOTE_HIT_LY
+    cp NOTE_HIT_LY + NOTE_DESPAWN_RANGE
     jr c, .noteInRange
     ld a, $FF
 .noteInRange
@@ -391,6 +629,7 @@ MainGameLoop:
     jr nz, .circleUpdateLoop
     jr .endCircleUpdate
 
+    ; If circle off screen, skip 2 sprites (8 bytes)
 .offscreenCircle
     ld a, 8
     add l
@@ -422,12 +661,23 @@ MainGameLoop:
 
 
 
-SECTION "Initial Delay Table", ROM0
+SECTION "Game Data", ROM0
 InitDelayTable:
     db NOTE_HIT_LY/1
     db NOTE_HIT_LY/2
     db NOTE_HIT_LY/3
     db NOTE_HIT_LY/4
+
+GameLabelTable:
+    dw LabelTilemapOKAY
+    dw LabelTilemapGREAT
+    dw LabelTilemapPERFECT
+    dw LabelTilemapMISS
+
+LabelTilemapOKAY:    db 1, LB_OKAY_START,    1, LB_OKAY_START+1,    1, LB_OKAY_START+2,    1, 0, 0
+LabelTilemapGREAT:   db 1, LB_GREAT_START,   1, LB_GREAT_START+1,   1, LB_GREAT_START+2,   1, 0, 0
+LabelTilemapPERFECT: db 1, LB_PERFECT_START, 1, LB_PERFECT_START+1, 1, LB_PERFECT_START+2, 1, LB_PERFECT_START+3, 0
+LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_START+2,    1, 0, 0
 
 
 
