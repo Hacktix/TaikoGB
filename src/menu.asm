@@ -383,7 +383,7 @@ RenderSongLabel:
     push af
     push hl
 
-    ; Fetch Pointer to Song header and offset by $0F (Start of Song Title)
+    ; Fetch Pointer to Song header and offset by $0F (Start of Song Title) to DE
     ld l, a
     xor a
     ld h, a
@@ -396,10 +396,38 @@ RenderSongLabel:
     ld l, d
     ld de, $000F
     add hl, de
-
-    ; Load String pointer into DE and VRAM pointer into HL and print
     ld d, h
     ld e, l
+
+    ; Clear 3*32 Tiles starting at VRAM Pointer
+    pop hl
+    push hl
+    ld bc, $2003
+    xor a
+.labelClearLoop
+    ld [hli], a
+    dec b
+    jr nz, .labelClearLoop
+    ld a, h
+    and $9B
+    ld h, a
+    xor a
+    dec c
+    ld b, $20
+    jr nz, .labelClearLoop
+
+    ; Check if LCD is on, if so wait for VBlank
+    ldh a, [rLCDC]
+    and LCDCF_ON
+    jr z, .skipVBlank
+.waitVBlank
+    halt
+    ldh a, [rLY]
+    cp SCRN_Y
+    jr c, .waitVBlank
+.skipVBlank
+
+    ; Print song title string
     pop hl
     call Strcpy
 
