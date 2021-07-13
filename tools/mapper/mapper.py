@@ -19,13 +19,20 @@ display_text = False
 circ1_img = pygame.image.load('assets/circle1.png')
 circ2_img = pygame.image.load('assets/circle2.png')
 
+
 MUSIC_END = pygame.USEREVENT+1
 pygame.init()
+pygame.mixer.init()
+
 GAME_FONT = pygame.freetype.SysFont('Helvetica', 30)
 WIDTH = 960
 HEIGHT = 540
 BG_COLOR = (100, 145, 10)
 
+drum1 = pygame.mixer.Sound('assets/hit1.mp3')
+drum2 = pygame.mixer.Sound('assets/hit2.mp3')
+drum1.set_volume(0.2)
+drum2.set_volume(0.2)
 
 # The game supports 4 different approach rates defined in pixels per frame
 # these rates in milliseconds are:
@@ -38,6 +45,9 @@ app_rate = int(1803 / selected_difficulty)
 app_step = (HEIGHT - 40) / app_rate
 
 map_objects = [] # (offset, B/A)
+visible_objects = []
+object_moving = False
+movable_object = -1
 
 def init_mapper():
     if not os.path.isdir("songs"):
@@ -54,7 +64,6 @@ def init_mapper():
         print("The 'songs' folder needs to have atleast one song in it")
         exit()
     else:
-        pygame.mixer.init()
         pygame.font.init()
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
@@ -96,7 +105,7 @@ def load_song(song_num):
     song_length = int(song.info.length * 1000)
 
 def draw_frame(song_pos):
-    global display_text, selected_difficulty
+    global display_text, selected_difficulty, visible_objects
     # Reset screen
     screen.fill(BG_COLOR)
 
@@ -134,16 +143,26 @@ def draw_frame(song_pos):
 
     # BEGIN MAP OBJECTS
     render_objects = []
+    visible_objects = []
     for object in map_objects:
-        if song_pos in range(object[0] - app_rate, object[0] + 1):
+        if song_pos in range(object[0] - app_rate, object[0] + 50):
             render_objects.append(object)
+            visible_objects.append(map_objects.index(object))
 
     for object in render_objects:
-        position = app_step * (app_rate - (object[0] - song_pos))
+        position = int(app_step * (app_rate - (object[0] - song_pos)))
         if object[1] == 1:
-            screen.blit(circ1_img, (500, position - 64))
+            if position in range(500, 500 + int(app_step*19)):
+                if pygame.mixer.music.get_busy():
+                    drum1.play()
+            if position < 500:
+                screen.blit(circ1_img, (500, position - 64))
         else:
-            screen.blit(circ2_img, (600, position - 64))
+            if position in range(500, 500 + int(app_step*19)):
+                if pygame.mixer.music.get_busy():
+                    drum2.play()
+            if position < 500:
+                screen.blit(circ2_img, (600, position - 64))
     # END MAP OBJECTS
 
     if display_text:
@@ -160,8 +179,6 @@ def export_map():
     global map_objects, selected_song, song_files, display_text, text_timer
     map_objects.sort()
     temp_objects = map_objects[:]
-
-    
 
     output_objects = []
     for i, object in enumerate(temp_objects):
@@ -228,7 +245,13 @@ def export_map():
         
         
 def handle_events():
-    global song_pos, map_objects, song_length, scroll_speed, edit_mode, selected_obj, selected_difficulty, app_rate, app_step
+    global song_pos, map_objects, song_length, scroll_speed, edit_mode, selected_obj, selected_difficulty, app_rate, app_step, visible_objects, movable_object, object_moving
+    if object_moving:
+        cur_obj_pos = int(app_step * (app_rate - (map_objects[movable_object][0] - song_pos)))
+        obj_pos_offset = (cur_obj_pos - 32) - pygame.mouse.get_pos()[1]
+        new_obj_pos = (app_rate - ((cur_obj_pos - obj_pos_offset) / app_step)) + song_pos
+        map_objects[movable_object] = (int(new_obj_pos), map_objects[movable_object][1])
+
     cur_pos = pygame.mixer.music.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -311,6 +334,19 @@ def handle_events():
                 elif new_pos > song_length:
                     new_pos = song_length
                 map_objects[selected_obj] = (new_pos, map_objects[selected_obj][1])
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            for object_num in visible_objects:
+                object = map_objects[object_num]
+                object_position = int(app_step * (app_rate - (object[0] - song_pos))) - 64
+                if mouse_pos[1] in range(object_position, object_position + 65):
+                    if mouse_pos[0] in range(500 + 100*(object[1]-1), 565 + 100*(object[1]-1)):
+                        object_moving = True
+                        movable_object = object_num
+        elif event.type == pygame.MOUSEBUTTONUP:
+            object_moving = False
+            movable_object = -1
+
         elif event.type == MUSIC_END:
             song_pos = 0
     return cur_pos
