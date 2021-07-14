@@ -74,18 +74,55 @@ def init_mapper():
         screen.blit(text_surface, (0, 510))
         pygame.display.flip()
 
+def load_map():
+    main_loop()
+
+def select_map(value, map):
+    global map_objects, selected_difficulty, app_rate, app_step
+    with open("output/"+value[0][0], "rb") as fp:
+        map_data = fp.read()
+
+    selected_difficulty = map_data[2]
+    app_rate = int(1803 / selected_difficulty)
+    app_step = (HEIGHT - 40) / app_rate
+    map_objects = []
+    cur_offset = 0
+    for object in map_data[3::]:
+        object = int(object)
+        if (object & 0b11000000) != 0:
+            if (object & 0b10000000) != 0:
+                map_objects.append((cur_offset, 2))
+            if (object & 0b01000000) != 0:
+                map_objects.append((cur_offset, 1))
+
+        cur_offset += int((object & 0b00111111)*4*16.7)
+
 def init_menu():
     global menu
     menu = pygame_menu.Menu('TaikoGB mapper', WIDTH, HEIGHT, theme=pygame_menu.themes.THEME_DARK)
+    load_menu = pygame_menu.Menu('TaikoGB mapper', WIDTH, HEIGHT, theme=pygame_menu.themes.THEME_DARK)
 
-    temp_arr = []
+    song_arr = []
     for i in range(num_songs):
-        temp_arr.append((song_files[i], i))
+        song_arr.append((song_files[i], i))
+
+    map_arr = []
+    for i, map in enumerate(os.listdir("output")):
+        map_arr.append((map, i))
+
+    
         
-    menu.add.dropselect('Song :', temp_arr, onchange=select_song, default=0)
+    load_menu.add.dropselect('Song :', map_arr, onchange=select_map)
+    load_menu.add.button('Load map', load_map)
+    load_menu.add.button('Back', menu.mainloop, screen)
+
+    menu.add.dropselect('Song :', song_arr, onchange=select_song, default=0)
     menu.add.button('Start mapping', main_loop)
+    menu.add.button('Load map', load_menu.mainloop, screen)
     menu.add.button('Quit', pygame_menu.events.EXIT)
     menu.mainloop(screen)
+
+    
 
 
 
@@ -258,6 +295,7 @@ def handle_events():
             quit()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE: # Start/stop music
+                edit_mode = False
                 if pygame.mixer.music.get_busy():
                     song_pos += cur_pos
                     pygame.mixer.music.pause()
