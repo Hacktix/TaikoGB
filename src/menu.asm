@@ -388,14 +388,14 @@ RenderSongLabel:
 .inRange
 
     ; Preserve VRAM Pointer
-    push af
+    ld d, a
     ld a, h
     and $9B
     ld h, a
     ld a, l
     and $E0
     ld l, a
-    pop af
+    ld a, d
     push af
     push hl
 
@@ -418,9 +418,12 @@ RenderSongLabel:
     ; Clear 3*32 Tiles starting at VRAM Pointer
     pop hl
     push hl
-    ld bc, $2003
+    ld bc, $0803
     xor a
 .labelClearLoop
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
     ld [hli], a
     dec b
     jr nz, .labelClearLoop
@@ -429,19 +432,8 @@ RenderSongLabel:
     ld h, a
     xor a
     dec c
-    ld b, $20
+    ld b, $08
     jr nz, .labelClearLoop
-
-    ; Check if LCD is on, if so wait for VBlank
-    ldh a, [rLCDC]
-    and LCDCF_ON
-    jr z, .skipVBlank
-.waitVBlank
-    halt
-    ldh a, [rLY]
-    cp SCRN_Y
-    jr c, .waitVBlank
-.skipVBlank
 
     ; Print song title string
     pop hl
@@ -453,8 +445,6 @@ RenderSongLabel:
     ld l, a
     adc h
     sub l
-    ld h, a
-    ld a, h
     and $9B
     ld h, a
     ld a, l
@@ -462,17 +452,17 @@ RenderSongLabel:
     ld l, a
     call Strcpy
 
-    ; Go to new line in VRAM & clear
-    ld de, $0020
-    add hl, de
-    ld a, h
+    ; Go to new line in VRAM (already cleared)
+    ld a, $40
+    add l
+    ld l, a
+    adc h
+    sub l
     and $9B
     ld h, a
     ld a, l
     and $E0
     ld l, a
-    ld bc, 32
-    call Memset
 
     ; Return from Subroutine
     pop af
