@@ -285,6 +285,15 @@ InitGame:
     ldh [hNextEventDelay], a
     xor a
     ldh [hPtrOAM], a
+    ld [wScore], a
+    ld [wScore+1], a
+    ld [wCombo], a
+    ld [wCombo+1], a
+
+    ; Rendering Queue Variables ($FF)
+    dec a
+    ldh [hRenderLabelLeft], a
+    ldh [hRenderLabelRight], a
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
@@ -316,6 +325,53 @@ MainGameLoop:
     ; Do OAM DMA
     ld a, HIGH(wShadowOAM)
     call hOAMDMA
+
+    ;----------------------------------------------------------------------------
+    ; Accuracy Label Rendering
+
+    ; Left Taiko
+    ldh a, [hRenderLabelLeft]
+    cp $FF
+    jr z, .noRenderLabelB
+    ld hl, VRAM_ACC_L
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustB
+    inc b
+.noLabelAdjustB
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+    ld a, $FF
+    ldh [hRenderLabelLeft], a
+.noRenderLabelB
+
+    ; Right Taiko
+    ldh a, [hRenderLabelRight]
+    cp $FF
+    jr z, .noRenderLabelA
+    ld hl, VRAM_ACC_R
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustA
+    inc b
+.noLabelAdjustA
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+    ld a, $FF
+    ldh [hRenderLabelRight], a
+.noRenderLabelA
 
     ;----------------------------------------------------------------------------
     ; Accuracy Label Despawning
@@ -353,7 +409,7 @@ MainGameLoop:
     ; Check for A Drum Button Press
     ldh a, [hPressedKeys]
     and BTN_DRUM_A
-    jr z, .noDrumPressA
+    jp z, .noDrumPressA
 
     ; Search for lowest A Drum Circle
     ld hl, wShadowOAM
@@ -438,24 +494,22 @@ MainGameLoop:
     ld b, INDEX_PERFECT
 .endHitRangeCalcA
 
-    ; TODO: Update score & combo
-
-    ; Render Accuracy Labels
-    ld hl, VRAM_ACC_R
+    ; Queue Rendering of Accuracy Labels
     ld a, b
-    add a
-    add LOW(GameLabelTable)
-    ld c, a
-    ld b, HIGH(GameLabelTable)
-    jr nc, .noLabelAdjustA
-    inc b
-.noLabelAdjustA
-    ld a, [bc]
+    ldh [hRenderLabelRight], a
+
+    ; TODO: Update score
+
+    ; Update Combo
+    ld hl, wCombo
+    ld a, [hli]
     ld e, a
-    inc bc
-    ld a, [bc]
+    ld a, [hld]
     ld d, a
-    call LoadTilemap
+    inc de
+    ld a, e
+    ld [hli], a
+    ld [hl], d
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -465,7 +519,7 @@ MainGameLoop:
     ; Check for B Button Presses
     ldh a, [hPressedKeys]
     and BTN_DRUM_B
-    jr z, .noDrumPressB
+    jp z, .noDrumPressB
 
     ; Search for lowest A Drum Circle
     ld hl, wShadowOAM
@@ -550,24 +604,22 @@ MainGameLoop:
     ld b, INDEX_PERFECT
 .endHitRangeCalcB
 
-    ; TODO: Update score & combo
-
-    ; Render Accuracy Labels
-    ld hl, VRAM_ACC_L
+    ; Queue Rendering of Accuracy Labels
     ld a, b
-    add a
-    add LOW(GameLabelTable)
-    ld c, a
-    ld b, HIGH(GameLabelTable)
-    jr nc, .noLabelAdjustB
-    inc b
-.noLabelAdjustB
-    ld a, [bc]
+    ldh [hRenderLabelLeft], a
+
+    ; TODO: Update score
+
+    ; Update Combo
+    ld hl, wCombo
+    ld a, [hli]
     ld e, a
-    inc bc
-    ld a, [bc]
+    ld a, [hld]
     ld d, a
-    call LoadTilemap
+    inc de
+    ld a, e
+    ld [hli], a
+    ld [hl], d
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -688,14 +740,21 @@ MainGameLoop:
     cp $FF
     jr z, .offscreenCircle
 
-    ; Update Y Coordinate
+    ; Calculate new Y Value, check if in range
     ld b, a
     ldh a, [hApproachSpeed]
     inc a
     add b
     cp NOTE_HIT_LY + NOTE_DESPAWN_RANGE
     jr c, .noteInRange
+
+    ; Reset combo on missed note, set Y Value to $FF
+    xor a
+    ld [wCombo], a
+    ld [wCombo+1], a
     ld a, $FF
+
+    ; Update Y Values in Shadow OAM
 .noteInRange
     ld [hli], a
     inc hl
@@ -761,6 +820,12 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 
 
 
+SECTION "Main Game WRAM", WRAM0
+wCombo: dw
+wScore: dw
+
+
+
 SECTION "Main Game HRAM", HRAM
 hApproachSpeed: db
 hSongPlayDelay: db
@@ -770,6 +835,8 @@ hPtrOAM: db
 ; Accuracy Label Variables
 hClearDelayLeft: db
 hClearDelayRight: db
+hRenderLabelLeft: db
+hRenderLabelRight: db
 
 
 
