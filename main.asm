@@ -88,13 +88,9 @@ Main::
     ldh [hHeldKeys], a
     ldh [hSelectedSong], a
 
-    ; Initialize Audio Registers
-    ld a, $80
-    ld [rAUDENA], a
-    ld a, $FF
-    ld [rAUDTERM], a
-    ld a, $77
-    ld [rAUDVOL], a
+    ; Initially turn off audio
+    xor a
+    ldh [rAUDENA], a
 
     ; Initialize OAM DMA Routine in HRAM
 	ld hl, OAMDMA

@@ -53,6 +53,16 @@ InitGame:
     inc a
     ld [rROMB0], a
 
+    ; Reset & Initialize Audio Registers
+    xor a
+    ldh [rAUDENA], a
+    ld a, $80
+    ld [rAUDENA], a
+    ld a, $FF
+    ld [rAUDTERM], a
+    ld a, $77
+    ld [rAUDVOL], a
+
     ;----------------------------------------------------------------------------
     ; Load Window Tilemap
 

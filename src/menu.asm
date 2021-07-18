@@ -318,7 +318,18 @@ SongMenuLoop:
     jr z, .doPlaySong
     dec a
     ldh [hSelectedSongCooldown], a
+    jr nz, .skipInputCheck
+    
+    ; Initialize Audio Registers if cooldown hits 0
+    ld a, $80
+    ld [rAUDENA], a
+    ld a, $FF
+    ld [rAUDTERM], a
+    ld a, $77
+    ld [rAUDVOL], a
     jr .skipInputCheck
+
+    ; Update hUGEDriver Frame
 .doPlaySong
     call _hUGE_dosound
 
@@ -357,6 +368,11 @@ InitSongPreview:
     call hUGE_init
     ld a, SEL_PLAY_CD
     ldh [hSelectedSongCooldown], a
+
+    ; Disable Audio until Preview Starts & Return
+    xor a
+    ldh [rAUDENA], a
+    ret 
 
 ;----------------------------------------------------------------------------
 ; Renders a song label absed on the given parameters.
