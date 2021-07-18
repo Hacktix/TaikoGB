@@ -2,35 +2,70 @@
 ; Constant Definitions
 ;----------------------------------------------------------------------------
 
-; "Config" Constants
+;----------------------------------------------------------------------------
+; # "Config" Constants #
+
+; Note Lane & Hit Height
 DEF WX_NOTE_LANE       EQU 100
 DEF NOTE_HIT_LY        EQU $6C
 DEF NOTE_DESPAWN_RANGE EQU 24
 
+; Button Constants
 DEF BTN_DRUM_A         EQU BTN_A | BTN_DPAD_R
 DEF BTN_DRUM_B         EQU BTN_B | BTN_DPAD_L
 
+; Accuracy Ranges (in pixels)
 DEF RANGE_OKAY         EQU 24
 DEF RANGE_GREAT        EQU 16
 DEF RANGE_PERFECT      EQU 8
 
+; Accuracy indices, DO NOT TOUCH
 DEF INDEX_OKAY         EQU 0
 DEF INDEX_GREAT        EQU 1
 DEF INDEX_PERFECT      EQU 2
 DEF INDEX_MISS         EQU 3
 
-; Tile Numbers
+; Delay for accuracy labels (in frames)
+DEF DELAY_LB_CLEAR     EQU 25
+
+;----------------------------------------------------------------------------
+; # Tile Numbers #
+
+; Note Lane Tiles
 DEF NOTE_LANE_TILE_L EQU $10
 DEF NOTE_LANE_TILE_R EQU $11
+
+; Drum & Circle Tiles
 DEF DRUM_TILE_START  EQU $04
+DEF CIRCLE_TILE_BASE EQU $02
+
+; Label & Text Tiles
 DEF LB_SCORE_START   EQU $94
 DEF LB_COMBO_START   EQU $97
-DEF NUM_TILE_BASE    EQU $80
-DEF CIRCLE_TILE_BASE EQU $02
 DEF LB_MISS_START    EQU $12
 DEF LB_OKAY_START    EQU $15
 DEF LB_GREAT_START   EQU $18
 DEF LB_PERFECT_START EQU $1B
+DEF NUM_TILE_BASE    EQU $80
+
+;----------------------------------------------------------------------------
+; # VRAM Addresses #
+
+; Score Labels
+DEF VRAM_SCORE       EQU $9C00
+DEF VRAM_POINTS_HI   EQU $9C20
+DEF VRAM_POINTS_LO   EQU VRAM_POINTS_HI+$20
+
+; Combo Labels
+DEF VRAM_COMBO       EQU $9E00
+DEF VRAM_COMBO_HI    EQU $9DC0
+DEF VRAM_COMBO_LO    EQU VRAM_COMBO_HI+$20
+
+; Accuracy Labels
+DEF VRAM_ACC_L       EQU $9A20
+DEF VRAM_ACC_R       EQU $9A24
+
+
 
 SECTION "Main Game", ROM0
 ;----------------------------------------------------------------------------
@@ -89,7 +124,7 @@ InitGame:
     ; Load Background Tilemap
 
     ; Load Score Label
-    ld hl, $9C00
+    ld hl, VRAM_SCORE
     ld b, 3
     ld a, LB_SCORE_START
 .scoreLabelLoad
@@ -99,8 +134,8 @@ InitGame:
     jr nz, .scoreLabelLoad
 
     ; Load Points Label
-    ld hl, $9C20
-    ld de, $9C40
+    ld hl, VRAM_POINTS_HI
+    ld de, VRAM_POINTS_LO
     ld a, NUM_TILE_BASE
     ld b, 8
 .pointLabelLoad
@@ -113,7 +148,7 @@ InitGame:
     jr nz, .pointLabelLoad
 
     ; Load Combo Label
-    ld hl, $9E00
+    ld hl, VRAM_COMBO
     ld b, 4
     ld a, LB_COMBO_START
 .comboLabelLoad
@@ -121,9 +156,9 @@ InitGame:
     inc a
     dec b
     jr nz, .comboLabelLoad
-    ld hl, $9DC0
+    ld hl, VRAM_COMBO_HI
     ld [hl], NUM_TILE_BASE
-    ld hl, $9DE0
+    ld hl, VRAM_COMBO_LO
     ld [hl], NUM_TILE_BASE + $0A
 
     ;----------------------------------------------------------------------------
@@ -283,6 +318,33 @@ MainGameLoop:
     call hOAMDMA
 
     ;----------------------------------------------------------------------------
+    ; Accuracy Label Despawning
+
+    ; Left Taiko Label Clear
+    ldh a, [hClearDelayLeft]
+    dec a
+    ldh [hClearDelayLeft], a
+    jr nz, .noLeftLabelClear
+    ld hl, VRAM_ACC_L
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+.noLeftLabelClear
+
+    ; Right Taiko Label Clear
+    ldh a, [hClearDelayRight]
+    dec a
+    ldh [hClearDelayRight], a
+    jr nz, .noRightLabelClear
+    ld hl, VRAM_ACC_R
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+.noRightLabelClear
+
+    ;----------------------------------------------------------------------------
     ; Input Handler
 
     ; Fetch current input state
@@ -379,7 +441,7 @@ MainGameLoop:
     ; TODO: Update score & combo
 
     ; Render Accuracy Labels
-    ld hl, $9A24
+    ld hl, VRAM_ACC_R
     ld a, b
     add a
     add LOW(GameLabelTable)
@@ -394,6 +456,10 @@ MainGameLoop:
     ld a, [bc]
     ld d, a
     call LoadTilemap
+
+    ; Update Accuracy Label Clear Timeouts
+    ld a, DELAY_LB_CLEAR
+    ldh [hClearDelayRight], a
 .noDrumPressA
 
     ; Check for B Button Presses
@@ -487,7 +553,7 @@ MainGameLoop:
     ; TODO: Update score & combo
 
     ; Render Accuracy Labels
-    ld hl, $9A20
+    ld hl, VRAM_ACC_L
     ld a, b
     add a
     add LOW(GameLabelTable)
@@ -502,6 +568,10 @@ MainGameLoop:
     ld a, [bc]
     ld d, a
     call LoadTilemap
+
+    ; Update Accuracy Label Clear Timeouts
+    ld a, DELAY_LB_CLEAR
+    ldh [hClearDelayLeft], a
 .noDrumPressB
 
     ;----------------------------------------------------------------------------
@@ -696,6 +766,10 @@ hApproachSpeed: db
 hSongPlayDelay: db
 hNextEventDelay: db
 hPtrOAM: db
+
+; Accuracy Label Variables
+hClearDelayLeft: db
+hClearDelayRight: db
 
 
 
