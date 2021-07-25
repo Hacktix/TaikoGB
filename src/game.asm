@@ -28,6 +28,9 @@ DEF INDEX_MISS         EQU 3
 ; Delay for accuracy labels (in frames)
 DEF DELAY_LB_CLEAR     EQU 25
 
+; BCD Config Variables
+DEF SIZE_COMBO         EQU 2
+
 ;----------------------------------------------------------------------------
 ; # Tile Numbers #
 
@@ -401,6 +404,13 @@ MainGameLoop:
 .noRightLabelClear
 
     ;----------------------------------------------------------------------------
+    ; Combo Label Rendering
+    ld hl, wCombo+SIZE_COMBO-1
+    ld de, VRAM_COMBO_HI
+    ld b, SIZE_COMBO
+    call RenderBCD_NLZ
+
+    ;----------------------------------------------------------------------------
     ; Input Handler
 
     ; Fetch current input state
@@ -502,14 +512,9 @@ MainGameLoop:
 
     ; Update Combo
     ld hl, wCombo
-    ld a, [hli]
-    ld e, a
-    ld a, [hld]
-    ld d, a
-    inc de
-    ld a, e
-    ld [hli], a
-    ld [hl], d
+    ld a, 1
+    ld b, SIZE_COMBO
+    call AddBCD
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -612,14 +617,9 @@ MainGameLoop:
 
     ; Update Combo
     ld hl, wCombo
-    ld a, [hli]
-    ld e, a
-    ld a, [hld]
-    ld d, a
-    inc de
-    ld a, e
-    ld [hli], a
-    ld [hl], d
+    ld a, 1
+    ld b, SIZE_COMBO
+    call AddBCD
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -798,6 +798,84 @@ MainGameLoop:
     call _hUGE_dosound
     jp MainGameLoop
 
+;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers (Score & Combo)
+; Falls through to RenderBCD but makes sure to remove all leading zeroes.
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD_NLZ:
+    ; Skip all zero bytes
+    ld a, [hl]
+    and a
+    jr nz, .noZeroBytes
+    dec hl
+    dec b
+    jr z, .numberIsZero
+    jr RenderBCD_NLZ
+.numberIsZero
+    xor a
+    jr RenderBCD.renderNibble
+.noZeroBytes
+
+    ; Check if upper nibble is zero
+    ld c, a
+    and $F0
+    ld a, c
+    jr z, RenderBCD.onlyUpperNibble
+
+;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers (Score & Combo)
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD:
+    ; Load BCD byte, back up in C, swap nibbles
+    ld a, [hld]
+    ld c, a
+    swap a
+
+    ; Render lower nibble, swap nibbles, render upper nibble
+    call .renderNibble
+    ld a, c
+.onlyUpperNibble
+    call .renderNibble
+
+    ; Check if all bytes have been rendered, if so return, otherwise loop
+    dec b
+    jr nz, RenderBCD
+    ret
+
+.renderNibble
+    ; Get lower nibble, calculate upper tile address, write to VRAM
+    and $0F
+    add NUM_TILE_BASE
+    ld [de], a
+
+    ; Go to next tile line
+    push af
+    ld a, $20
+    add e
+    ld e, a
+    adc d
+    sub e
+    ld d, a
+    pop af
+
+    ; Get lower tile index, load into VRAM, reset pointer to upper tile of next digit
+    add 10
+    ld [de], a
+    ld a, e
+    sub $1F
+    ld e, a
+    ret nc
+    dec d
+    ret
+
 
 
 SECTION "Game Data", ROM0
@@ -821,7 +899,7 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 
 
 SECTION "Main Game WRAM", WRAM0
-wCombo: dw
+wCombo: ds SIZE_COMBO
 wScore: dw
 
 
