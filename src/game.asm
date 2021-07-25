@@ -32,6 +32,11 @@ DEF DELAY_LB_CLEAR     EQU 25
 DEF SIZE_COMBO         EQU 2
 DEF SIZE_SCORE         EQU 3
 
+; Combo Thresholds
+DEF COMBO_RANGE_CNT    EQU 2
+DEF COMBO_LIMIT_1      EQU 15
+DEF COMBO_LIMIT_2      EQU 30
+
 ;----------------------------------------------------------------------------
 ; # Tile Numbers #
 
@@ -289,6 +294,7 @@ InitGame:
     ldh [hNextEventDelay], a
     xor a
     ldh [hPtrOAM], a
+    ldh [hComboLevel], a
     ld [wScore], a
     ld [wScore+1], a
     ld [wScore+2], a
@@ -529,9 +535,11 @@ ENDR
     ld a, b
     ldh [hRenderLabelRight], a
 
-    ; TODO: Update score
+    ; Update score
+    ldh a, [hComboLevel]
+    add b
+    inc a
     ld hl, wScore
-    ld a, 1
     ld b, SIZE_SCORE
     call AddBCD
 
@@ -540,6 +548,23 @@ ENDR
     ld a, 1
     ld b, SIZE_COMBO
     call AddBCD
+
+    ; Update Combo Scoring Level
+    ldh a, [hComboLevel]
+    cp COMBO_RANGE_CNT
+    jr z, .noUpdateScoringLevelA
+    ld a, [wCombo]
+    ld b, 0
+    cp COMBO_LIMIT_1
+    jr c, .endUpdateScoringLevelA
+    ld b, 1
+    cp COMBO_LIMIT_2
+    jr c, .endUpdateScoringLevelA
+    ld b, 2
+.endUpdateScoringLevelA
+    ld a, b
+    ldh [hComboLevel], a
+.noUpdateScoringLevelA
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -639,8 +664,10 @@ ENDR
     ldh [hRenderLabelLeft], a
 
     ; TODO: Update score
+    ldh a, [hComboLevel]
+    add b
+    inc a
     ld hl, wScore
-    ld a, 1
     ld b, SIZE_SCORE
     call AddBCD
 
@@ -649,6 +676,23 @@ ENDR
     ld a, 1
     ld b, SIZE_COMBO
     call AddBCD
+
+    ; Update Combo Scoring Level
+    ldh a, [hComboLevel]
+    cp COMBO_RANGE_CNT
+    jr z, .noUpdateScoringLevelB
+    ld a, [wCombo]
+    ld b, 0
+    cp COMBO_LIMIT_1
+    jr c, .endUpdateScoringLevelB
+    ld b, 1
+    cp COMBO_LIMIT_2
+    jr c, .endUpdateScoringLevelB
+    ld b, 2
+.endUpdateScoringLevelB
+    ld a, b
+    ldh [hComboLevel], a
+.noUpdateScoringLevelB
 
     ; Update Accuracy Label Clear Timeouts
     ld a, DELAY_LB_CLEAR
@@ -781,6 +825,7 @@ ENDR
     xor a
     ld [wCombo], a
     ld [wCombo+1], a
+    ldh [hComboLevel], a
     ld a, $FF
 
     ; Update Y Values in Shadow OAM
@@ -944,6 +989,9 @@ hClearDelayLeft: db
 hClearDelayRight: db
 hRenderLabelLeft: db
 hRenderLabelRight: db
+
+; Scoring Variables
+hComboLevel: db
 
 
 
