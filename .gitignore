@@ -4,6 +4,7 @@ desktop.ini
 # build files
 *.o
 *.gb
+*.sav
 *.sym
 *.2bpp
 *.tilemap
