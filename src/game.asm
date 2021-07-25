@@ -30,6 +30,7 @@ DEF DELAY_LB_CLEAR     EQU 25
 
 ; BCD Config Variables
 DEF SIZE_COMBO         EQU 2
+DEF SIZE_SCORE         EQU 3
 
 ;----------------------------------------------------------------------------
 ; # Tile Numbers #
@@ -290,6 +291,7 @@ InitGame:
     ldh [hPtrOAM], a
     ld [wScore], a
     ld [wScore+1], a
+    ld [wScore+2], a
     ld [wCombo], a
     ld [wCombo+1], a
 
@@ -405,10 +407,29 @@ MainGameLoop:
 
     ;----------------------------------------------------------------------------
     ; Combo Label Rendering
+
+    ; Clear First Label
+    ld hl, VRAM_COMBO_HI
+    ld de, VRAM_COMBO_LO
+    xor a
+REPT 4
+    ld [hli], a
+    ld [de], a
+    inc de
+ENDR
+
+    ; Render Label
     ld hl, wCombo+SIZE_COMBO-1
     ld de, VRAM_COMBO_HI
     ld b, SIZE_COMBO
     call RenderBCD_NLZ
+
+    ;----------------------------------------------------------------------------
+    ; Score Label Rendering
+    ld hl, wScore+SIZE_SCORE-1
+    ld de, VRAM_POINTS_HI
+    ld b, SIZE_SCORE
+    call RenderBCD
 
     ;----------------------------------------------------------------------------
     ; Input Handler
@@ -509,6 +530,10 @@ MainGameLoop:
     ldh [hRenderLabelRight], a
 
     ; TODO: Update score
+    ld hl, wScore
+    ld a, 1
+    ld b, SIZE_SCORE
+    call AddBCD
 
     ; Update Combo
     ld hl, wCombo
@@ -614,6 +639,10 @@ MainGameLoop:
     ldh [hRenderLabelLeft], a
 
     ; TODO: Update score
+    ld hl, wScore
+    ld a, 1
+    ld b, SIZE_SCORE
+    call AddBCD
 
     ; Update Combo
     ld hl, wCombo
@@ -900,7 +929,7 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 
 SECTION "Main Game WRAM", WRAM0
 wCombo: ds SIZE_COMBO
-wScore: dw
+wScore: ds SIZE_SCORE
 
 
 
