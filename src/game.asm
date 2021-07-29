@@ -898,7 +898,11 @@ RenderBCD_NLZ:
     ld c, a
     and $F0
     ld a, c
-    jr z, RenderBCD.onlyUpperNibble
+    jr nz, RenderBCD
+
+    ; Pre-decrement HL before rendering only upper nibble
+    dec hl
+    jr RenderBCD.onlyUpperNibble
 
 ;----------------------------------------------------------------------------
 ; Rendering routine for BCD numbers (Score & Combo)
