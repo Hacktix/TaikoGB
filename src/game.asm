@@ -2,35 +2,79 @@
 ; Constant Definitions
 ;----------------------------------------------------------------------------
 
-; "Config" Constants
+;----------------------------------------------------------------------------
+; # "Config" Constants #
+
+; Note Lane & Hit Height
 DEF WX_NOTE_LANE       EQU 100
 DEF NOTE_HIT_LY        EQU $6C
 DEF NOTE_DESPAWN_RANGE EQU 24
 
+; Button Constants
 DEF BTN_DRUM_A         EQU BTN_A | BTN_DPAD_R
 DEF BTN_DRUM_B         EQU BTN_B | BTN_DPAD_L
 
+; Accuracy Ranges (in pixels)
 DEF RANGE_OKAY         EQU 24
 DEF RANGE_GREAT        EQU 16
 DEF RANGE_PERFECT      EQU 8
 
+; Accuracy indices, DO NOT TOUCH
 DEF INDEX_OKAY         EQU 0
 DEF INDEX_GREAT        EQU 1
 DEF INDEX_PERFECT      EQU 2
 DEF INDEX_MISS         EQU 3
 
-; Tile Numbers
+; Delay for accuracy labels (in frames)
+DEF DELAY_LB_CLEAR     EQU 25
+
+; BCD Config Variables
+DEF SIZE_COMBO         EQU 2
+DEF SIZE_SCORE         EQU 3
+
+; Combo Thresholds
+DEF COMBO_RANGE_CNT    EQU 2
+DEF COMBO_LIMIT_1      EQU 15
+DEF COMBO_LIMIT_2      EQU 30
+
+;----------------------------------------------------------------------------
+; # Tile Numbers #
+
+; Note Lane Tiles
 DEF NOTE_LANE_TILE_L EQU $10
 DEF NOTE_LANE_TILE_R EQU $11
+
+; Drum & Circle Tiles
 DEF DRUM_TILE_START  EQU $04
+DEF CIRCLE_TILE_BASE EQU $02
+
+; Label & Text Tiles
 DEF LB_SCORE_START   EQU $94
 DEF LB_COMBO_START   EQU $97
-DEF NUM_TILE_BASE    EQU $80
-DEF CIRCLE_TILE_BASE EQU $02
 DEF LB_MISS_START    EQU $12
 DEF LB_OKAY_START    EQU $15
 DEF LB_GREAT_START   EQU $18
 DEF LB_PERFECT_START EQU $1B
+DEF NUM_TILE_BASE    EQU $80
+
+;----------------------------------------------------------------------------
+; # VRAM Addresses #
+
+; Score Labels
+DEF VRAM_SCORE       EQU $9C00
+DEF VRAM_POINTS_HI   EQU $9C20
+DEF VRAM_POINTS_LO   EQU VRAM_POINTS_HI+$20
+
+; Combo Labels
+DEF VRAM_COMBO       EQU $9E00
+DEF VRAM_COMBO_HI    EQU $9DC0
+DEF VRAM_COMBO_LO    EQU VRAM_COMBO_HI+$20
+
+; Accuracy Labels
+DEF VRAM_ACC_L       EQU $9A20
+DEF VRAM_ACC_R       EQU $9A24
+
+
 
 SECTION "Main Game", ROM0
 ;----------------------------------------------------------------------------
@@ -89,7 +133,7 @@ InitGame:
     ; Load Background Tilemap
 
     ; Load Score Label
-    ld hl, $9C00
+    ld hl, VRAM_SCORE
     ld b, 3
     ld a, LB_SCORE_START
 .scoreLabelLoad
@@ -99,8 +143,8 @@ InitGame:
     jr nz, .scoreLabelLoad
 
     ; Load Points Label
-    ld hl, $9C20
-    ld de, $9C40
+    ld hl, VRAM_POINTS_HI
+    ld de, VRAM_POINTS_LO
     ld a, NUM_TILE_BASE
     ld b, 8
 .pointLabelLoad
@@ -113,7 +157,7 @@ InitGame:
     jr nz, .pointLabelLoad
 
     ; Load Combo Label
-    ld hl, $9E00
+    ld hl, VRAM_COMBO
     ld b, 4
     ld a, LB_COMBO_START
 .comboLabelLoad
@@ -121,9 +165,9 @@ InitGame:
     inc a
     dec b
     jr nz, .comboLabelLoad
-    ld hl, $9DC0
+    ld hl, VRAM_COMBO_HI
     ld [hl], NUM_TILE_BASE
-    ld hl, $9DE0
+    ld hl, VRAM_COMBO_LO
     ld [hl], NUM_TILE_BASE + $0A
 
     ;----------------------------------------------------------------------------
@@ -250,6 +294,17 @@ InitGame:
     ldh [hNextEventDelay], a
     xor a
     ldh [hPtrOAM], a
+    ldh [hComboLevel], a
+    ld [wScore], a
+    ld [wScore+1], a
+    ld [wScore+2], a
+    ld [wCombo], a
+    ld [wCombo+1], a
+
+    ; Rendering Queue Variables ($FF)
+    dec a
+    ldh [hRenderLabelLeft], a
+    ldh [hRenderLabelRight], a
 
     ;----------------------------------------------------------------------------
     ; Initialize Interrupts & Fall through to main loop
@@ -283,6 +338,106 @@ MainGameLoop:
     call hOAMDMA
 
     ;----------------------------------------------------------------------------
+    ; Accuracy Label Rendering
+
+    ; Left Taiko
+    ldh a, [hRenderLabelLeft]
+    cp $FF
+    jr z, .noRenderLabelB
+    ld hl, VRAM_ACC_L
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustB
+    inc b
+.noLabelAdjustB
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+    ld a, $FF
+    ldh [hRenderLabelLeft], a
+.noRenderLabelB
+
+    ; Right Taiko
+    ldh a, [hRenderLabelRight]
+    cp $FF
+    jr z, .noRenderLabelA
+    ld hl, VRAM_ACC_R
+    add a
+    add LOW(GameLabelTable)
+    ld c, a
+    ld b, HIGH(GameLabelTable)
+    jr nc, .noLabelAdjustA
+    inc b
+.noLabelAdjustA
+    ld a, [bc]
+    ld e, a
+    inc bc
+    ld a, [bc]
+    ld d, a
+    call LoadTilemap
+    ld a, $FF
+    ldh [hRenderLabelRight], a
+.noRenderLabelA
+
+    ;----------------------------------------------------------------------------
+    ; Accuracy Label Despawning
+
+    ; Left Taiko Label Clear
+    ldh a, [hClearDelayLeft]
+    dec a
+    ldh [hClearDelayLeft], a
+    jr nz, .noLeftLabelClear
+    ld hl, VRAM_ACC_L
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+.noLeftLabelClear
+
+    ; Right Taiko Label Clear
+    ldh a, [hClearDelayRight]
+    dec a
+    ldh [hClearDelayRight], a
+    jr nz, .noRightLabelClear
+    ld hl, VRAM_ACC_R
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+    ld [hli], a
+.noRightLabelClear
+
+    ;----------------------------------------------------------------------------
+    ; Combo Label Rendering
+
+    ; Clear First Label
+    ld hl, VRAM_COMBO_HI
+    ld de, VRAM_COMBO_LO
+    xor a
+REPT 4
+    ld [hli], a
+    ld [de], a
+    inc de
+ENDR
+
+    ; Render Label
+    ld hl, wCombo+SIZE_COMBO-1
+    ld de, VRAM_COMBO_HI
+    ld b, SIZE_COMBO
+    call RenderBCD_NLZ
+
+    ;----------------------------------------------------------------------------
+    ; Score Label Rendering
+    ld hl, wScore+SIZE_SCORE-1
+    ld de, VRAM_POINTS_HI
+    ld b, SIZE_SCORE
+    call RenderBCD
+
+    ;----------------------------------------------------------------------------
     ; Input Handler
 
     ; Fetch current input state
@@ -291,7 +446,7 @@ MainGameLoop:
     ; Check for A Drum Button Press
     ldh a, [hPressedKeys]
     and BTN_DRUM_A
-    jr z, .noDrumPressA
+    jp z, .noDrumPressA
 
     ; Search for lowest A Drum Circle
     ld hl, wShadowOAM
@@ -376,30 +531,50 @@ MainGameLoop:
     ld b, INDEX_PERFECT
 .endHitRangeCalcA
 
-    ; TODO: Update score & combo
-
-    ; Render Accuracy Labels
-    ld hl, $9A24
+    ; Queue Rendering of Accuracy Labels
     ld a, b
-    add a
-    add LOW(GameLabelTable)
-    ld c, a
-    ld b, HIGH(GameLabelTable)
-    jr nc, .noLabelAdjustA
-    inc b
-.noLabelAdjustA
-    ld a, [bc]
-    ld e, a
-    inc bc
-    ld a, [bc]
-    ld d, a
-    call LoadTilemap
+    ldh [hRenderLabelRight], a
+
+    ; Update score
+    ldh a, [hComboLevel]
+    add b
+    inc a
+    ld hl, wScore
+    ld b, SIZE_SCORE
+    call AddBCD
+
+    ; Update Combo
+    ld hl, wCombo
+    ld a, 1
+    ld b, SIZE_COMBO
+    call AddBCD
+
+    ; Update Combo Scoring Level
+    ldh a, [hComboLevel]
+    cp COMBO_RANGE_CNT
+    jr z, .noUpdateScoringLevelA
+    ld a, [wCombo]
+    ld b, 0
+    cp COMBO_LIMIT_1
+    jr c, .endUpdateScoringLevelA
+    ld b, 1
+    cp COMBO_LIMIT_2
+    jr c, .endUpdateScoringLevelA
+    ld b, 2
+.endUpdateScoringLevelA
+    ld a, b
+    ldh [hComboLevel], a
+.noUpdateScoringLevelA
+
+    ; Update Accuracy Label Clear Timeouts
+    ld a, DELAY_LB_CLEAR
+    ldh [hClearDelayRight], a
 .noDrumPressA
 
     ; Check for B Button Presses
     ldh a, [hPressedKeys]
     and BTN_DRUM_B
-    jr z, .noDrumPressB
+    jp z, .noDrumPressB
 
     ; Search for lowest A Drum Circle
     ld hl, wShadowOAM
@@ -484,24 +659,44 @@ MainGameLoop:
     ld b, INDEX_PERFECT
 .endHitRangeCalcB
 
-    ; TODO: Update score & combo
-
-    ; Render Accuracy Labels
-    ld hl, $9A20
+    ; Queue Rendering of Accuracy Labels
     ld a, b
-    add a
-    add LOW(GameLabelTable)
-    ld c, a
-    ld b, HIGH(GameLabelTable)
-    jr nc, .noLabelAdjustB
-    inc b
-.noLabelAdjustB
-    ld a, [bc]
-    ld e, a
-    inc bc
-    ld a, [bc]
-    ld d, a
-    call LoadTilemap
+    ldh [hRenderLabelLeft], a
+
+    ; Update score
+    ldh a, [hComboLevel]
+    add b
+    inc a
+    ld hl, wScore
+    ld b, SIZE_SCORE
+    call AddBCD
+
+    ; Update Combo
+    ld hl, wCombo
+    ld a, 1
+    ld b, SIZE_COMBO
+    call AddBCD
+
+    ; Update Combo Scoring Level
+    ldh a, [hComboLevel]
+    cp COMBO_RANGE_CNT
+    jr z, .noUpdateScoringLevelB
+    ld a, [wCombo]
+    ld b, 0
+    cp COMBO_LIMIT_1
+    jr c, .endUpdateScoringLevelB
+    ld b, 1
+    cp COMBO_LIMIT_2
+    jr c, .endUpdateScoringLevelB
+    ld b, 2
+.endUpdateScoringLevelB
+    ld a, b
+    ldh [hComboLevel], a
+.noUpdateScoringLevelB
+
+    ; Update Accuracy Label Clear Timeouts
+    ld a, DELAY_LB_CLEAR
+    ldh [hClearDelayLeft], a
 .noDrumPressB
 
     ;----------------------------------------------------------------------------
@@ -618,14 +813,22 @@ MainGameLoop:
     cp $FF
     jr z, .offscreenCircle
 
-    ; Update Y Coordinate
+    ; Calculate new Y Value, check if in range
     ld b, a
     ldh a, [hApproachSpeed]
     inc a
     add b
     cp NOTE_HIT_LY + NOTE_DESPAWN_RANGE
     jr c, .noteInRange
+
+    ; Reset combo on missed note, set Y Value to $FF
+    xor a
+    ld [wCombo], a
+    ld [wCombo+1], a
+    ldh [hComboLevel], a
     ld a, $FF
+
+    ; Update Y Values in Shadow OAM
 .noteInRange
     ld [hli], a
     inc hl
@@ -669,6 +872,84 @@ MainGameLoop:
     call _hUGE_dosound
     jp MainGameLoop
 
+;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers (Score & Combo)
+; Falls through to RenderBCD but makes sure to remove all leading zeroes.
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD_NLZ:
+    ; Skip all zero bytes
+    ld a, [hl]
+    and a
+    jr nz, .noZeroBytes
+    dec hl
+    dec b
+    jr z, .numberIsZero
+    jr RenderBCD_NLZ
+.numberIsZero
+    xor a
+    jr RenderBCD.renderNibble
+.noZeroBytes
+
+    ; Check if upper nibble is zero
+    ld c, a
+    and $F0
+    ld a, c
+    jr z, RenderBCD.onlyUpperNibble
+
+;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers (Score & Combo)
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD:
+    ; Load BCD byte, back up in C, swap nibbles
+    ld a, [hld]
+    ld c, a
+    swap a
+
+    ; Render lower nibble, swap nibbles, render upper nibble
+    call .renderNibble
+    ld a, c
+.onlyUpperNibble
+    call .renderNibble
+
+    ; Check if all bytes have been rendered, if so return, otherwise loop
+    dec b
+    jr nz, RenderBCD
+    ret
+
+.renderNibble
+    ; Get lower nibble, calculate upper tile address, write to VRAM
+    and $0F
+    add NUM_TILE_BASE
+    ld [de], a
+
+    ; Go to next tile line
+    push af
+    ld a, $20
+    add e
+    ld e, a
+    adc d
+    sub e
+    ld d, a
+    pop af
+
+    ; Get lower tile index, load into VRAM, reset pointer to upper tile of next digit
+    add 10
+    ld [de], a
+    ld a, e
+    sub $1F
+    ld e, a
+    ret nc
+    dec d
+    ret
+
 
 
 SECTION "Game Data", ROM0
@@ -691,11 +972,26 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 
 
 
+SECTION "Main Game WRAM", WRAM0
+wCombo: ds SIZE_COMBO
+wScore: ds SIZE_SCORE
+
+
+
 SECTION "Main Game HRAM", HRAM
 hApproachSpeed: db
 hSongPlayDelay: db
 hNextEventDelay: db
 hPtrOAM: db
+
+; Accuracy Label Variables
+hClearDelayLeft: db
+hClearDelayRight: db
+hRenderLabelLeft: db
+hRenderLabelRight: db
+
+; Scoring Variables
+hComboLevel: db
 
 
 
