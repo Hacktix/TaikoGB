@@ -106,6 +106,29 @@ LoadTilemap:
     jr LoadTilemap
 
 ;----------------------------------------------------------------------------
+; Input:
+;  A  - Value to add
+;  B  - Number of BCD Bytes
+;  HL - Pointer to BCD Value in Memory
+;----------------------------------------------------------------------------
+AddBCD:
+    ; Add value to lowest BCD Byte
+    add [hl]
+    daa
+    ld [hli], a
+
+    ; Return if no carry occurred
+    ret nc
+
+    ; Check if at end of BCD number, return if so
+    dec b
+    ret z
+
+    ; Queue next byte to be incremented by 1, loop
+    ld a, 1
+    jr AddBCD
+
+;----------------------------------------------------------------------------
 ; Fetches the input state to the two corresponding HRAM addresses
 ;----------------------------------------------------------------------------
 FetchInput:

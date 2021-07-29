@@ -27,22 +27,22 @@ ENDM
 ;----------------------------------------------------------------------------
 SECTION "Mapset Table", ROM0
 
-; Format:     SongEntry <song_ident>, <easy_map_ptr>, <medium_map_ptr>, <hard_map_ptr>, <extreme_map_ptr>, <song_title>,          <artist_name>
-MapsetTotaka: SongEntry totaka,       TotakaEasy,     NULL,             NULL,           NULL,              "Totaka's Song",       " Kazumi Totaka"
-MapsetDummy0: SongEntry birthday,     NULL,           NULL,             NULL,           NULL,              "Happy Birthday",      " Someone Maybe idk"
-MapsetDummy1: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Eleven Eight",        " Levi Niha"
-MapsetDummy2: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Renzokuken",          " HERO DIES FIRST"
-MapsetDummy3: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song D",        " Dummy Artist D"
-MapsetDummy4: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song E",        " Dummy Artist E"
-MapsetDummy5: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song F",        " Dummy Artist F"
-MapsetDummy6: SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song G",        " Dummy Artist G"
+; Format:        SongEntry <song_ident>, <easy_map_ptr>, <medium_map_ptr>, <hard_map_ptr>, <extreme_map_ptr>, <song_title>,          <artist_name>
+MapsetTotaka:    SongEntry totaka,       TotakaEasy,     NULL,             NULL,           NULL,              "Totaka's Song",       " Kazumi Totaka"
+MapsetBday:      SongEntry birthday,     NULL,           NULL,             NULL,           NULL,              "Happy Birthday",      " Someone Maybe idk"
+MapsetMoonlight: SongEntry moonlight,    NULL,           NULL,             NULL,           NULL,              "Moonlight Sonata",    " Beethoven"
+MapsetDummy2:    SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Renzokuken",          " HERO DIES FIRST"
+MapsetDummy3:    SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song D",        " Dummy Artist D"
+MapsetDummy4:    SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song E",        " Dummy Artist E"
+MapsetDummy5:    SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song F",        " Dummy Artist F"
+MapsetDummy6:    SongEntry totaka,       NULL,           NULL,             NULL,           NULL,              "Dummy Song G",        " Dummy Artist G"
 
 ; Pointer Table to song headers in the list above. Songs will be displayed in the same order as in the table,
 ; any songs in the list above must also be added here to be visible at all.
 MapsetTable:
     dw MapsetTotaka
-    dw MapsetDummy0
-    dw MapsetDummy1
+    dw MapsetBday
+    dw MapsetMoonlight
     dw MapsetDummy2
     dw MapsetDummy3
     dw MapsetDummy4
