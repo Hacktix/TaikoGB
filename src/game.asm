@@ -663,7 +663,7 @@ ENDR
     ld a, b
     ldh [hRenderLabelLeft], a
 
-    ; TODO: Update score
+    ; Update score
     ldh a, [hComboLevel]
     add b
     inc a
