@@ -37,6 +37,9 @@ DEF COMBO_RANGE_CNT    EQU 2
 DEF COMBO_LIMIT_1      EQU 15
 DEF COMBO_LIMIT_2      EQU 30
 
+; Delay after song ends
+DEF SONG_END_DELAY     EQU $80
+
 ;----------------------------------------------------------------------------
 ; # Tile Numbers #
 
@@ -300,6 +303,7 @@ InitGame:
     ld [wScore+2], a
     ld [wCombo], a
     ld [wCombo+1], a
+    ld [wSongEnd], a
 
     ; Rendering Queue Variables ($FF)
     dec a
@@ -708,9 +712,34 @@ ENDR
     ldh [hNextEventDelay], a
     jp nz, .waitForEvent
 
-    ; Restore counters from stack & read next event byte
+    ; Check Event Count
     pop hl
     pop bc
+    ld a, b
+    or c
+    jr nz, .doEventSpawn
+
+    ; Check if first time this happens
+    ld a, [wSongEnd]
+    and a
+    jr z, .noEndYet
+
+    ; If second time, actually end the game
+.waitEndGame
+    jp TransitionScore
+
+    ; If first time, change RAM value and wait for next trigger
+.noEndYet
+    dec a
+    ld [wSongEnd], a
+    ld a, SONG_END_DELAY
+    ldh [hNextEventDelay], a
+    push bc
+    push hl
+    jr .waitForEvent
+
+    ; Restore counters from stack & read next event byte
+.doEventSpawn
     ld a, [hli]
     dec bc
 
@@ -979,6 +1008,7 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 SECTION "Main Game WRAM", WRAM0
 wCombo: ds SIZE_COMBO
 wScore: ds SIZE_SCORE
+wSongEnd: db
 
 
 

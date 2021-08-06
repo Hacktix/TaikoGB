@@ -5,6 +5,7 @@ INCLUDE "src/songs.asm"
 INCLUDE "src/common.asm"
 INCLUDE "src/menu.asm"
 INCLUDE "src/game.asm"
+INCLUDE "src/scorescreen.asm"
 
 SECTION "Vectors", ROM0[0]
 
