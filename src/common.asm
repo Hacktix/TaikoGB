@@ -168,6 +168,88 @@ ENDR
     ret
 
 ;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers
+; Falls through to RenderBCD but makes sure to remove all leading zeroes.
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD_NLZ:
+    ; Skip all zero bytes
+    ld a, [hl]
+    and a
+    jr nz, .noZeroBytes
+    dec hl
+    dec b
+    jr z, .numberIsZero
+    jr RenderBCD_NLZ
+.numberIsZero
+    xor a
+    jr RenderBCD.renderNibble
+.noZeroBytes
+
+    ; Check if upper nibble is zero
+    ld c, a
+    and $F0
+    ld a, c
+    jr nz, RenderBCD
+
+    ; Pre-decrement HL before rendering only upper nibble
+    dec hl
+    jr RenderBCD.onlyUpperNibble
+
+;----------------------------------------------------------------------------
+; Rendering routine for BCD numbers
+; Input:
+;  HL - Pointer to HIGHEST byte of BCD Number
+;  DE - Pointer to VRAM (upper tile address)
+;  B  - Amount of BCD Bytes
+;----------------------------------------------------------------------------
+RenderBCD:
+    ; Load BCD byte, back up in C, swap nibbles
+    ld a, [hld]
+    ld c, a
+    swap a
+
+    ; Render lower nibble, swap nibbles, render upper nibble
+    call .renderNibble
+    ld a, c
+.onlyUpperNibble
+    call .renderNibble
+
+    ; Check if all bytes have been rendered, if so return, otherwise loop
+    dec b
+    jr nz, RenderBCD
+    ret
+
+.renderNibble
+    ; Get lower nibble, calculate upper tile address, write to VRAM
+    and $0F
+    add NUM_TILE_BASE
+    ld [de], a
+
+    ; Go to next tile line
+    push af
+    ld a, $20
+    add e
+    ld e, a
+    adc d
+    sub e
+    ld d, a
+    pop af
+
+    ; Get lower tile index, load into VRAM, reset pointer to upper tile of next digit
+    add 10
+    ld [de], a
+    ld a, e
+    sub $1F
+    ld e, a
+    ret nc
+    dec d
+    ret
+
+;----------------------------------------------------------------------------
 ; OAM DMA Routine, should be copied to HRAM
 ;----------------------------------------------------------------------------
 OAMDMA:
