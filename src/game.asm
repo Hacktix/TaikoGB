@@ -303,6 +303,8 @@ InitGame:
     ld [wScore+2], a
     ld [wCombo], a
     ld [wCombo+1], a
+    ld [wComboMax], a
+    ld [wComboMax+1], a
     ld [wSongEnd], a
 
     ; Rendering Queue Variables ($FF)
@@ -503,7 +505,7 @@ ENDR
     ; If note is above OKAY range act as if nothing happened
     ld a, b
     cp NOTE_HIT_LY - RANGE_OKAY
-    jr c, .noDrumPressA
+    jp c, .noDrumPressA
 
     ; Move note out of frame
     ld h, HIGH(wShadowOAM)
@@ -552,6 +554,42 @@ ENDR
     ld a, 1
     ld b, SIZE_COMBO
     call AddBCD
+
+    ; Update Max Combo
+    ld hl, wComboMax+SIZE_COMBO-1
+    ld de, wCombo+SIZE_COMBO-1
+    ld c, SIZE_COMBO
+.checkMaxComboLoopA
+    ld a, [hl]
+    and $F0
+    ld b, a
+    ld a, [de]
+    and $F0
+    sub b
+    jr c, .noNewMaxComboA
+    jr nz, .yesMaxComboA
+    ld a, [hld]
+    and $0F
+    ld b, a
+    ld a, [de]
+    and $0F
+    dec de
+    sub b
+    jr c, .noNewMaxComboA
+    dec c
+    jr nz, .checkMaxComboLoopA
+
+.yesMaxComboA
+    ld hl, wComboMax
+    ld de, wCombo
+    ld c, SIZE_COMBO
+.maxComboCopyLoopA
+    ld a, [de]
+    ld [hli], a
+    inc de
+    dec c
+    jr nz, .maxComboCopyLoopA
+.noNewMaxComboA
 
     ; Update Combo Scoring Level
     ldh a, [hComboLevel]
@@ -631,7 +669,7 @@ ENDR
     ; If note is above OKAY range act as if nothing happened
     ld a, b
     cp NOTE_HIT_LY - RANGE_OKAY
-    jr c, .noDrumPressB
+    jp c, .noDrumPressB
 
     ; Move note out of frame
     ld h, HIGH(wShadowOAM)
@@ -680,6 +718,42 @@ ENDR
     ld a, 1
     ld b, SIZE_COMBO
     call AddBCD
+
+    ; Update Max Combo
+    ld hl, wComboMax+SIZE_COMBO-1
+    ld de, wCombo+SIZE_COMBO-1
+    ld c, SIZE_COMBO
+.checkMaxComboLoopB
+    ld a, [hl]
+    and $F0
+    ld b, a
+    ld a, [de]
+    and $F0
+    sub b
+    jr c, .noNewMaxComboB
+    jr nz, .yesMaxComboB
+    ld a, [hld]
+    and $0F
+    ld b, a
+    ld a, [de]
+    and $0F
+    dec de
+    sub b
+    jr c, .noNewMaxComboB
+    dec c
+    jr nz, .checkMaxComboLoopB
+
+.yesMaxComboB
+    ld hl, wComboMax
+    ld de, wCombo
+    ld c, SIZE_COMBO
+.maxComboCopyLoopB
+    ld a, [de]
+    ld [hli], a
+    inc de
+    dec c
+    jr nz, .maxComboCopyLoopB
+.noNewMaxComboB
 
     ; Update Combo Scoring Level
     ldh a, [hComboLevel]
@@ -926,6 +1000,7 @@ LabelTilemapMISS:    db 1, LB_MISS_START,    1, LB_MISS_START+1,    1, LB_MISS_S
 SECTION "Main Game WRAM", WRAM0
 wCombo: ds SIZE_COMBO
 wScore: ds SIZE_SCORE
+wComboMax: ds SIZE_COMBO
 wSongEnd: db
 
 

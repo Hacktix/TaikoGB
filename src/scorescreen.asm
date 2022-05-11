@@ -134,9 +134,8 @@ InitScore:
     call PrintStringDelayed
 
     ; Print actual combo values
-    ; TODO: This doesn't actually print the max combo, just the latest one
     ld de, $9892
-    ld hl, wCombo
+    ld hl, wComboMax
     ld c, SIZE_COMBO
     call PrintDelayedBCD
 
