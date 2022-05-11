@@ -8,3 +8,6 @@ desktop.ini
 *.sym
 *.2bpp
 *.tilemap
+
+# vscode debug config
+.vscode
